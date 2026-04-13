@@ -11,228 +11,292 @@ class AdminPage extends Page {
     }
 
     public function getOutput() {
-        global $gvPath;
-
         $page = new WebPageOutput();
-        $page->setHtmlPageTitle('Pannello amministrazione FastQueue');
-
-        // Injecter CSS + Header
-        $page->setHtmlBodyHeader($this->getDesignCSS() . $this->getHeaderAndNav());
-        $page->setHtmlBodyContent($this->getPageContent());
-        
+        $page->setHtmlPageTitle("Dashboard FastQueue");
+        $page->setHtmlBodyHeader($this->getDesignCSS());
+        $page->setHtmlBodyContent($this->getLayout());
         return $page;
     }
 
-    /** ✅ HEADER + NAVBAR */
-    private function getHeaderAndNav() {
-        global $gvPath;
-        return <<<HTML
-<div class="admin-header">
-    <h2>Pannello amministrazione FastQueue</h2>
-    <span>Gestione del sistema</span>
-</div>
-
-<div class="admin-navbar">
-    <a class="nav-item active" href="$gvPath/application/adminPage">Dashboard</a>
-    <a class="nav-item" href="$gvPath/application/adminOperatorList">Operatori</a>
-    <a class="nav-item" href="$gvPath/application/adminDeskList">Sportelli</a>
-    <a class="nav-item" href="$gvPath/application/adminTopicalDomainList">Aree tematiche</a>
-    <a class="nav-item" href="$gvPath/application/adminDeviceList">Dispositivi</a>
-    <a class="nav-item" href="$gvPath/application/adminStats">Statistiche</a>
-    <a class="nav-item" href="$gvPath/application/adminSettings">Impostazioni</a>
-    <a class="nav-item" style="margin-left:auto;" href="$gvPath/application/logoutPage">Logout</a>
-</div>
-HTML;
-    }
-
-    /** ✅ CONTENU DE LA PAGE */
-    public function getPageContent() {
+    private function getLayout() {
         global $gvPath;
 
-        // ✅ COMPTEUR DYNAMIQUE DES OPERATEURS
         $operatorCount = count(Operator::fromDatabaseCompleteList());
 
         return <<<HTML
-<div class="dashboard-container">
+<div class="layout">
 
-    <!-- ✅ COMPTEUR DYNAMIQUE -->
-    <div class="widget-box">
-        <div class="number">$operatorCount</div>
-        <div>
-            <strong>Operatori Registrati</strong><br>
-            Numero totale degli operatori attivi nel sistema
-        </div>
-    </div>
+    <!-- ✅ SIDEBAR STYLE COMME L’IMAGE -->
+    <aside class="sidebar">
 
-    <!-- DASHBOARD CARDS -->
-    <div class="cards-container">
-
-        <div class="card">
-            <div class="card-header">
-                Operatori
-                <span>Gestisci</span>
-            </div>
-            <div class="card-content">
-                Gestisci gli operatori registrati nel sistema.<br>
-                <a href="$gvPath/application/adminOperatorList">Vai alla gestione →</a>
-            </div>
+        <div class="sidebar-header">
+            <div class="logo-circle">FQ</div>
+            <h3 class="brand">FastQueue Admin</h3>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                Sportelli
-                <span>Gestisci</span>
-            </div>
-            <div class="card-content">
-                Configura e modifica gli sportelli attivi.<br>
-                <a href="$gvPath/application/adminDeskList">Vai alla gestione →</a>
-            </div>
-        </div>
+        <nav class="menu">
 
-        <div class="card">
-            <div class="card-header">
-                Aree tematiche
-                <span>Gestisci</span>
-            </div>
-            <div class="card-content">
-                Organizza le aree tematiche del servizio.<br>
-                <a href="$gvPath/application/adminTopicalDomainList">Vai alla gestione →</a>
-            </div>
-        </div>
+            <a href="$gvPath/application/adminPage" class="menu-item active">
+                <span>🏠</span> Dashboard
+            </a>
 
-        <div class="card">
-            <div class="card-header">
-                Dispositivi
-                <span>Gestisci</span>
-            </div>
-            <div class="card-content">
-                Visualizza e configura i dispositivi collegati.<br>
-                <a href="$gvPath/application/adminDeviceList">Vai alla gestione →</a>
-            </div>
-        </div>
+            <a href="$gvPath/application/adminOperatorList" class="menu-item">
+                <span>👤</span> Operatori
+            </a>
 
-        <div class="card">
-            <div class="card-header">
-                Statistiche
-                <span>Visualizza</span>
-            </div>
-            <div class="card-content">
-                Consultare le statistiche complete del sistema.<br>
-                <a href="$gvPath/application/adminStats">Apri →</a>
+            <a href="$gvPath/application/adminDeskList" class="menu-item">
+                <span>🖥️</span> Sportelli
+            </a>
+
+            <a href="$gvPath/application/adminTopicalDomainList" class="menu-item">
+                <span>📂</span> Aree Tematiche
+            </a>
+
+            <a href="$gvPath/application/adminDeviceList" class="menu-item">
+                <span>📱</span> Dispositivi
+            </a>
+
+            <a href="$gvPath/application/adminStats" class="menu-item">
+                <span>📈</span> Statistiche
+            </a>
+
+        </nav>
+
+        <!-- ✅ PARAMÈTRES & LOGOUT EN BAS DE LA SIDEBAR -->
+        <div class="menu-bottom">
+
+            <a href="$gvPath/application/adminSettings" class="menu-item">
+                <span>⚙️</span> Impostazioni
+            </a>
+
+            <a href="$gvPath/application/logoutPage" class="menu-item logout">
+                <span>🚪</span> Logout
+            </a>
+
+        </div>
+    </aside>
+
+
+    <!-- ✅ CONTENU PRINCIPAL -->
+    <main class="content">
+
+        <h2 class="page-title">Dashboard</h2>
+
+        <!-- ✅ WIDGET TOP -->
+        <div class="widget">
+            <div class="widget-number">$operatorCount</div>
+            <div class="widget-label">
+                <strong>Operatori Registrati</strong><br>
+                Totale operatori attivi
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                Impostazioni
-                <span>Configura</span>
+        <!-- ✅ CARTES STYLE PASTEL -->
+        <div class="cards">
+
+            <div class="card">
+                <h3>Operatori</h3>
+                <p>Gestione completa degli operatori del sistema.</p>
+                <a href="$gvPath/application/adminOperatorList" class="card-link">Apri →</a>
             </div>
-            <div class="card-content">
-                Configurazioni principali del sistema FastQueue.<br>
-                <a href="$gvPath/application/adminSettings">Apri →</a>
+
+            <div class="card">
+                <h3>Sportelli</h3>
+                <p>Configurazione e supervisione degli sportelli.</p>
+                <a href="$gvPath/application/adminDeskList" class="card-link">Apri →</a>
             </div>
+
+            <div class="card">
+                <h3>Aree Tematiche</h3>
+                <p>Organizzazione delle code e categorie di servizio.</p>
+                <a href="$gvPath/application/adminTopicalDomainList" class="card-link">Apri →</a>
+            </div>
+
+            <div class="card">
+                <h3>Dispositivi</h3>
+                <p>Monitoraggio e gestione dei dispositivi connessi.</p>
+                <a href="$gvPath/application/adminDeviceList" class="card-link">Apri →</a>
+            </div>
+
+            <div class="card">
+                <h3>Statistiche</h3>
+                <p>Analisi e report dettagliati sull’uso del sistema.</p>
+                <a href="$gvPath/application/adminStats" class="card-link">Apri →</a>
+            </div>
+
+            <div class="card">
+                <h3>Impostazioni</h3>
+                <p>Configurazioni generali del sistema FastQueue.</p>
+                <a href="$gvPath/application/adminSettings" class="card-link">Apri →</a>
+            </div>
+
         </div>
 
-    </div>
+    </main>
+
 </div>
 HTML;
     }
 
-    /** ✅ DESIGN CSS GLOBAL */
     private function getDesignCSS() {
         return <<<CSS
 <style>
 
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:hsl(210,5%,85%); font-family:'Segoe UI',Tahoma; }
-
-/* HEADER */
-.admin-header {
-    background:linear-gradient(135deg,hsl(354,82%,70%),hsl(354,62%,78%));
-    padding:22px 40px;
-    color:white;
-    box-shadow:0 4px 12px rgba(0,0,0,0.15);
-}
-.admin-header h2 { font-size:26px; font-weight:700; }
-
-/* NAVBAR */
-.admin-navbar {
-    background:white;
-    padding:12px 30px;
-    display:flex;
-    gap:18px;
-    border-bottom:1px solid rgba(0,0,0,0.10);
-}
-.nav-item {
-    padding:8px 18px;
-    border-radius:30px;
-    font-weight:600;
-    color:hsl(354,82%,70%);
-    text-decoration:none;
-    transition:0.3s;
-}
-.nav-item:hover { background:hsl(354,82%,90%); }
-.nav-item.active {
-    background:hsl(354,82%,70%);
-    color:white;
+/* ✅ GLOBAL */
+body {
+    margin: 0;
+    background: #F0ECFF;
+    font-family: 'Segoe UI', sans-serif;
 }
 
-/* DASHBOARD */
-.dashboard-container {
-    padding:40px;
+/* ✅ LAYOUT */
+.layout {
+    display: flex;
+    width: 100%;
+    height: 100vh;
 }
 
-/* WIDGET */
-.widget-box {
-    background:white;
-    padding:28px;
-    border-radius:16px;
-    box-shadow:0 4px 18px rgba(0,0,0,0.08);
-    display:flex;
-    gap:20px;
-    align-items:center;
-    margin-bottom:40px;
-}
-.widget-box .number {
-    font-size:40px;
-    font-weight:700;
-    color:hsl(354,82%,70%);
+/* ✅ SIDEBAR (STYLE IDENTIQUE À L’IMAGE) */
+.sidebar {
+    width: 250px;
+    background: linear-gradient(180deg, #6C63FF, #8B7FFF, #C7B8FF);
+    color: white;
+    padding: 25px 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 25px 25px 0;
+    box-shadow: 2px 0 15px rgba(0,0,0,0.08);
 }
 
-/* CARDS */
-.cards-container {
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:30px;
+/* Logo */
+.logo-circle {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: white;
+    margin: 0 auto 10px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6C63FF;
+    font-size: 26px;
+    font-weight: 800;
 }
+
+.sidebar-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.brand {
+    margin: 0;
+    font-size: 17px;
+    opacity: 0.85;
+    margin-top: 5px;
+}
+
+/* ✅ MENU */
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.menu-item {
+    padding: 12px 25px;
+    color: white;
+    text-decoration: none;
+    font-size: 15px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    opacity: 0.9;
+    transition: 0.25s;
+}
+
+.menu-item:hover {
+    opacity: 1;
+    background: rgba(255,255,255,0.15);
+}
+
+.menu-item.active {
+    background: rgba(255,255,255,0.30);
+    font-weight: bold;
+}
+
+/* ✅ BAS DE LA SIDEBAR */
+.menu-bottom {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Logout rouge */
+.logout:hover {
+    background: rgba(255, 50, 50, 0.28);
+}
+
+/* ✅ MAIN CONTENT */
+.content {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.page-title {
+    font-size: 28px;
+    margin-bottom: 25px;
+}
+
+/* ✅ Widget */
+.widget {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 22px rgba(0,0,0,0.08);
+    margin-bottom: 35px;
+}
+
+.widget-number {
+    font-size: 38px;
+    font-weight: 700;
+    color: #6C63FF;
+}
+
+/* ✅ Cards pastel style */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
+    gap: 25px;
+}
+
 .card {
-    background:white;
-    border-radius:16px;
-    box-shadow:0 4px 18px rgba(0,0,0,0.08);
-    overflow:hidden;
+    background: white;
+    padding: 22px;
+    border-radius: 15px;
+    box-shadow: 0 4px 22px rgba(0,0,0,0.08);
+    transition: 0.25s;
 }
-.card-header {
-    background:hsl(354,82%,70%);
-    color:white;
-    padding:20px;
-    font-size:18px;
-    font-weight:600;
-    display:flex;
-    justify-content:space-between;
+
+.card:hover {
+    transform: translateY(-3px);
 }
-.card-content {
-    padding:20px;
-    font-size:14px;
-    color:#444;
+
+.card-link {
+    color: #6C63FF;
+    font-weight: 600;
+    text-decoration: none;
 }
-.card-content a {
-    font-weight:600;
-    color:hsl(354,82%,70%);
-    text-decoration:none;
+
+.card-link:hover {
+    text-decoration: underline;
 }
-.card-content a:hover { text-decoration:underline; }
 
 </style>
 CSS;
     }
+
 }

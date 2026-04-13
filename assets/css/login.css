@@ -1,0 +1,99 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body */
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, hsl(220, 15%, 18%), hsl(220, 20%, 25%));
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Container */
+.root {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Login box */
+.login-container {
+  background: #ffffff;
+  padding: 40px 30px;
+  border-radius: 16px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+/* Title */
+.login-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: hsl(354, 82%, 70%);
+  margin-bottom: 30px;
+}
+
+/* Inputs */
+.login-container input[type="text"],
+.login-container input[type="password"] {
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 14px;
+  border: none;
+  border-bottom: 1px solid hsl(0, 0%, 85%);
+  outline: none;
+  font-size: 14px;
+  transition: 0.3s;
+}
+
+.login-container input::placeholder {
+  color: hsl(215, 16%, 47%);
+}
+
+/* Focus effect */
+.login-container input:focus {
+  border-bottom: 1px solid hsl(354, 82%, 70%);
+}
+
+/* Button */
+.login-container input[type="submit"] {
+  width: 100%;
+  margin-top: 10px;
+  padding: 14px;
+  background: hsl(354, 82%, 70%);
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(235, 110, 120, 0.35);
+  transition: 0.3s;
+}
+
+.login-container input[type="submit"]:hover {
+  transform: scale(1.05);
+}
+
+/* Error message */
+.error-message {
+  margin-top: 20px;
+  padding: 10px;
+  background: #ffe5e5;
+  color: #cc0000;
+  border-radius: 8px;
+  font-size: 14px;
+}

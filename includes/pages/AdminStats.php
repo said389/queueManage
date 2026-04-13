@@ -50,7 +50,7 @@ class AdminStats extends Page {
     }
 
 
-    /** ✅ LAYOUT COMPLET avec SIDEBAR VIOLETTE */
+    /** ✅ LAYOUT PRINCIPAL */
     private function getLayout() {
         global $gvPath;
 
@@ -59,7 +59,7 @@ class AdminStats extends Page {
         return <<<HTML
 <div class="layout">
 
-    <!-- ✅ SIDEBAR VIOLETTE -->
+    <!-- ✅ SIDEBAR -->
     <aside class="sidebar">
 
         <div class="sidebar-header">
@@ -69,34 +69,60 @@ class AdminStats extends Page {
 
         <nav class="menu">
 
-            <a class="menu-item" href="$gvPath/application/adminPage"><span>🏠</span> Dashboard</a>
-            <a class="menu-item" href="$gvPath/application/adminOperatorList"><span>👤</span> Operatori</a>
-            <a class="menu-item" href="$gvPath/application/adminDeskList"><span>🖥️</span> Sportelli</a>
-            <a class="menu-item" href="$gvPath/application/adminTopicalDomainList"><span>📂</span> Aree Tematiche</a>
-            <a class="menu-item" href="$gvPath/application/adminDeviceList"><span>📱</span> Dispositivi</a>
-            <a class="menu-item active" href="$gvPath/application/adminStats"><span>📈</span> Statistiche</a>
+            <a class="menu-item" href="$gvPath/application/adminPage">
+                <i class="fa-solid fa-house"></i> Dashboard
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminOperatorList">
+                <i class="fa-solid fa-user-gear"></i> Operatori
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminDeskList">
+                <i class="fa-solid fa-desktop"></i> Sportelli
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminTopicalDomainList">
+                <i class="fa-solid fa-folder-tree"></i> Aree Tematiche
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminDeviceList">
+                <i class="fa-solid fa-display"></i> Dispositivi
+            </a>
+
+            <a class="menu-item active" href="$gvPath/application/adminStats">
+                <i class="fa-solid fa-chart-line"></i> Statistiche
+            </a>
 
         </nav>
 
-        <!-- ✅ BAS -->
         <div class="menu-bottom">
-            <a class="menu-item" href="$gvPath/application/adminSettings"><span>⚙️</span> Impostazioni</a>
-            <a class="menu-item" href="$gvPath/application/logoutPage"><span>🚪</span> Logout</a>
+
+            <a class="menu-item" href="$gvPath/application/adminSettings">
+                <i class="fa-solid fa-gear"></i> Impostazioni
+            </a>
+
+            <a class="menu-item logout" href="$gvPath/application/logoutPage">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+
         </div>
 
     </aside>
 
 
-    <!-- ✅ CONTENU PRINCIPAL -->
+    <!-- ✅ CONTENU -->
     <main class="content">
 
         <h2 class="page-title">Statistiche del Sistema</h2>
 
-        <h3 class="section-title">Imposta il periodo</h3>
+        <h3 class="section-title"><i class="fa-solid fa-calendar-days"></i> Imposta il periodo</h3>
 
         {$this->getForm()}
 
-        <h3 class="section-title">Statistiche periodo: <span class="highlight">$timeSpan</span></h3>
+        <h3 class="section-title">
+            <i class="fa-solid fa-chart-pie"></i> Statistiche periodo:
+            <span class="highlight">$timeSpan</span>
+        </h3>
 
         <div class="stats-block">
             {$this->getTdStatsTable()}
@@ -106,7 +132,7 @@ class AdminStats extends Page {
             {$this->getSourceStatsTable()}
         </div>
 
-        <h3 class="section-title">Statistiche per operatore</h3>
+        <h3 class="section-title"><i class="fa-solid fa-users"></i> Statistiche per operatore</h3>
 
         <div class="stats-block">
             {$this->getStatsOperatorTables()}
@@ -120,7 +146,7 @@ HTML;
 
 
 
-    /** ✅ TEXT PERIOD */
+    /** ✅ PERIODO */
     private function getTimeSpanString() {
         if ($this->dateFrom == self::$MIN_DATE && $this->dateTo == self::$MAX_DATE)
             return "completo";
@@ -128,8 +154,13 @@ HTML;
         global $gvTimeZone;
         $zone = new DateTimeZone($gvTimeZone);
 
-        $from = new DateTime('@'.$this->dateFrom); $from->setTimezone($zone); $from = $from->format('d-m-Y');
-        $to   = new DateTime('@'.$this->dateTo);   $to->setTimezone($zone);   $to   = $to->format('d-m-Y');
+        $from = new DateTime('@'.$this->dateFrom);
+        $from->setTimezone($zone);
+        $from = $from->format('d-m-Y');
+
+        $to = new DateTime('@'.$this->dateTo);
+        $to->setTimezone($zone);
+        $to = $to->format('d-m-Y');
 
         return "dal $from al $to";
     }
@@ -143,7 +174,7 @@ HTML;
 
         return <<<HTML
 <table class="styled-table">
-    <caption>Statistiche per area tematica</caption>
+    <caption><i class="fa-solid fa-layer-group"></i> Statistiche per area tematica</caption>
     <tr>
         <th>Area</th>
         <th>Ticket</th>
@@ -156,7 +187,6 @@ HTML;
     }
 
 
-
     private function getTdStatsRows() {
 
         $rows = "";
@@ -166,12 +196,11 @@ HTML;
 
             $tickets = TicketStats::fromDatabaseListByCode(
                 $td->getCode(),
-                $this->dateFrom, $this->dateTo
+                $this->dateFrom,
+                $this->dateTo
             );
 
-            $wait = 0;
-            $exec = 0;
-            $count = 0;
+            $wait = 0; $exec = 0; $count = 0;
 
             foreach ($tickets as $t) {
                 if (!$t->getTimeExec()) continue;
@@ -181,8 +210,8 @@ HTML;
                 $count++;
             }
 
-            $avgWait = $count ? (int)($wait / $count / 60) : 0;
-            $avgExec = $count ? (int)($exec / $count / 60) : 0;
+            $avgWait = $count ? floor($wait / $count / 60) : 0;
+            $avgExec = $count ? floor($exec / $count / 60) : 0;
 
             $rows .= <<<HTML
 <tr>
@@ -199,7 +228,7 @@ HTML;
 
 
 
-    /** ✅ SOURCE TABLE */
+    /** ✅ TABLE SOURCES */
     public function getSourceStatsTable() {
 
         $sources = ['app','totem','web'];
@@ -207,18 +236,22 @@ HTML;
         $total = 0;
 
         foreach ($sources as $src) {
-            $arr = TicketStats::fromDatabaseListBySource($src, $this->dateFrom, $this->dateTo);
+            $arr = TicketStats::fromDatabaseListBySource(
+                $src,
+                $this->dateFrom,
+                $this->dateTo
+            );
             $count[$src] = count($arr);
             $total += $count[$src];
         }
 
-        $pApp   = $total ? (int)(($count['app']   / $total) * 100) : 0;
-        $pTotem = $total ? (int)(($count['totem'] / $total) * 100) : 0;
-        $pWeb   = $total ? (int)(($count['web']   / $total) * 100) : 0;
+        $pApp   = $total ? floor(($count['app']   / $total) * 100) : 0;
+        $pTotem = $total ? floor(($count['totem'] / $total) * 100) : 0;
+        $pWeb   = $total ? floor(($count['web']   / $total) * 100) : 0;
 
         return <<<HTML
 <table class="styled-table">
-    <caption>Statistiche per sorgente</caption>
+    <caption><i class="fa-solid fa-globe"></i> Statistiche per sorgente</caption>
     <tr>
         <th>Fonte</th>
         <th>Totale</th>
@@ -233,7 +266,7 @@ HTML;
 
 
 
-    /** ✅ OPERATOR TABLES */
+    /** ✅ TABLE OPERATEURS */
     public function getStatsOperatorTables() {
 
         $ops = Operator::fromDatabaseCompleteList();
@@ -245,7 +278,7 @@ HTML;
 
             $html .= <<<HTML
 <table class="styled-table">
-    <caption>{$op->getFullName()} ({$op->getCode()})</caption>
+    <caption><i class="fa-solid fa-user"></i> {$op->getFullName()} ({$op->getCode()})</caption>
     <tr>
         <th>Area</th>
         <th>Ticket</th>
@@ -266,20 +299,26 @@ HTML;
 
         $stats = [];
         $tickets = TicketStats::fromDatabaseListByOperator(
-            $op->getCode(), $this->dateFrom, $this->dateTo
+            $op->getCode(),
+            $this->dateFrom,
+            $this->dateTo
         );
 
         $total = count($tickets);
         $execSum = 0;
 
         foreach ($tickets as $t) {
+
             $code = $t->getCode();
+
             if (!isset($stats[$code]))
                 $stats[$code] = ['count'=>0,'exec'=>0];
 
             $exec = $t->getTimeOut() - $t->getTimeExec();
+
             $stats[$code]['count']++;
             $stats[$code]['exec'] += $exec;
+
             $execSum += $exec;
         }
 
@@ -292,8 +331,8 @@ HTML;
 
         foreach ($stats as $code => $s) {
 
-            $perc = (int)(($s['count'] / $total) * 100);
-            $avg  = (int)($s['exec'] / $s['count'] / 60);
+            $perc = floor(($s['count'] / $total) * 100);
+            $avg  = floor($s['exec'] / $s['count'] / 60);
 
             $rows .= <<<HTML
 <tr>
@@ -305,9 +344,10 @@ HTML;
 HTML;
         }
 
-        $avgTotal = (int)($execSum / $total / 60);
+        $avgTotal = floor($execSum / $total / 60);
 
-        $rows .= <<<HTML
+        return <<<HTML
+$rows
 <tr>
     <td><b>TOTALE</b></td>
     <td><b>$total</b></td>
@@ -315,9 +355,8 @@ HTML;
     <td><b>{$avgTotal} min</b></td>
 </tr>
 HTML;
-
-        return $rows;
     }
+
 
 
 
@@ -335,7 +374,11 @@ HTML;
         <tr>
             <td><input type="text" name="from" class="datepicker"></td>
             <td><input type="text" name="to" class="datepicker"></td>
-            <td><input type="submit" class="btn-primary" value="Aggiorna"></td>
+            <td>
+                <button class="btn-primary" type="submit">
+                    <i class="fa-solid fa-rotate"></i> Aggiorna
+                </button>
+            </td>
         </tr>
     </table>
 </form>
@@ -344,12 +387,13 @@ HTML;
 
 
 
-    /** ✅ CSS VIOLET PREMIUM */
+    /** ✅ CSS COMPLET ET FERMÉ CORRECTEMENT ✅ */
     private function getDesignCSS() {
         return <<<CSS
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 
-/* GLOBAL */
 body { margin:0; background:#F0ECFF; font-family:'Segoe UI',sans-serif; }
 .layout { display:flex; height:100vh; }
 
@@ -364,62 +408,70 @@ body { margin:0; background:#F0ECFF; font-family:'Segoe UI',sans-serif; }
     border-radius:0 25px 25px 0;
     box-shadow:3px 0 15px rgba(0,0,0,0.08);
 }
+
 .logo-circle {
     width:60px;height:60px;background:white;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
-    margin:0 auto 10px auto;color:#6C63FF;font-weight:800;font-size:26px;
+    margin:0 auto 10px auto;
+    color:#6C63FF;font-size:26px;font-weight:800;
 }
+
 .sidebar-header { text-align:center;margin-bottom:35px; }
 .brand { opacity:.85;font-size:17px; }
 
-/* ✅ MENU */
 .menu { display:flex;flex-direction:column; }
 .menu-item {
-    padding:12px 25px;color:white;text-decoration:none;
+    padding:12px 25px;
     display:flex;gap:12px;align-items:center;
-    font-size:15px;transition:0.25s;opacity:.85;
+    color:white;text-decoration:none;
+    opacity:.85;transition:.25s;
 }
 .menu-item:hover { opacity:1;background:rgba(255,255,255,0.15); }
 .menu-item.active { background:rgba(255,255,255,0.25);font-weight:bold; }
 
-/* ✅ MENU BAS */
 .menu-bottom { margin-top:auto;display:flex;flex-direction:column; }
 
-/* ✅ CONTENU */
+/* ✅ CONTENT */
 .content { flex:1;padding:45px;overflow-y:auto; }
 .page-title { font-size:28px;margin-bottom:25px; }
+.section-title { font-size:20px;margin:25px 0 10px 0; }
 
 /* ✅ TABLES */
 .styled-table {
-    width:100%;border-collapse:collapse;
-    background:white;padding:10px;border-radius:15px;
+    width:100%;
+    background:white;
+    padding:10px;
+    border-radius:15px;
     box-shadow:0 4px 18px rgba(0,0,0,0.08);
+    border-collapse:collapse;
 }
 .styled-table th {
-    background:#6C63FF;color:white;padding:12px;border-radius:6px;
+    background:#6C63FF;
+    color:white;
+    padding:12px;
+    border-radius:6px;
 }
 .styled-table td {
-    padding:12px;border-bottom:1px solid #eee;
+    padding:12px;
+    border-bottom:1px solid #eee;
 }
-.styled-table tr:hover {
-    background:#F3EEFF;
-}
+.styled-table tr:hover { background:#F3EEFF; }
 
 .caption { font-weight:bold;margin-bottom:10px; }
 
-/* ✅ STAT BLOCK */
-.stats-block {
-    margin-top:30px;
-}
-
-/* ✅ FORM */
+/* ✅ BUTTON */
 .btn-primary {
     background:#6C63FF;color:white;padding:10px 22px;
-    border-radius:30px;font-weight:600;border:none;
+    border-radius:30px;font-weight:600;border:none;cursor:pointer;
 }
 .btn-primary:hover { background:#5149E8; }
 
-.highlight { color:#6C63FF;font-weight:bold; }
+.highlight {
+    color:#6C63FF;
+    font-weight:bold;
+}
+
+.stats-block { margin-top:30px; }
 
 </style>
 CSS;

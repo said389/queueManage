@@ -15,7 +15,7 @@ class AdminOperatorList extends Page {
         $page = new WebPageOutput();
         $page->setHtmlPageTitle("Gestione operatori");
 
-        // ✅ Sidebar violet + Style complet
+        // ✅ Sidebar + CSS violet + icônes
         $page->setHtmlBodyHeader($this->getDesignCSS());
         $page->setHtmlBodyContent($this->getLayout());
 
@@ -23,7 +23,7 @@ class AdminOperatorList extends Page {
     }
 
 
-    /** ✅ PAGE LAYOUT AVEC SIDEBAR (comme l'image violet pastel) */
+    /** ✅ PAGE LAYOUT COMPLET */
     private function getLayout() {
         global $gvPath;
 
@@ -32,7 +32,7 @@ class AdminOperatorList extends Page {
         return <<<HTML
 <div class="layout">
 
-    <!-- ✅ SIDEBAR VIOLETTE -->
+    <!-- ✅ SIDEBAR -->
     <aside class="sidebar">
 
         <div class="sidebar-header">
@@ -43,42 +43,39 @@ class AdminOperatorList extends Page {
         <nav class="menu">
 
             <a class="menu-item" href="$gvPath/application/adminPage">
-                <span>🏠</span> Dashboard
+                <i class="fa-solid fa-house"></i> Dashboard
             </a>
 
             <a class="menu-item active" href="$gvPath/application/adminOperatorList">
-                <span>👤</span> Operatori
+                <i class="fa-solid fa-user-gear"></i> Operatori
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminDeskList">
-                <span>🖥️</span> Sportelli
+                <i class="fa-solid fa-desktop"></i> Sportelli
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminTopicalDomainList">
-                <span>📂</span> Aree Tematiche
+                <i class="fa-solid fa-folder-tree"></i> Aree Tematiche
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminDeviceList">
-                <span>📱</span> Dispositivi
+                <i class="fa-solid fa-display"></i> Dispositivi
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminStats">
-                <span>📈</span> Statistiche
+                <i class="fa-solid fa-chart-line"></i> Statistiche
             </a>
 
         </nav>
 
-        <!-- ✅ PARAMÈTRES + LOGOUT EN BAS DE LA SIDEBAR -->
         <div class="menu-bottom">
-
             <a class="menu-item" href="$gvPath/application/adminSettings">
-                <span>⚙️</span> Impostazioni
+                <i class="fa-solid fa-gear"></i> Impostazioni
             </a>
 
             <a class="menu-item logout" href="$gvPath/application/logoutPage">
-                <span>🚪</span> Logout
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
             </a>
-
         </div>
 
     </aside>
@@ -101,7 +98,9 @@ class AdminOperatorList extends Page {
         </div>
 
         <div class="add-btn-wrapper">
-            <a class="btn-primary" href="$gvPath/application/adminOperatorEdit">+ Aggiungi operatore</a>
+            <a class="btn-add" href="$gvPath/application/adminOperatorEdit">
+                <i class="fa-solid fa-plus"></i> Aggiungi operatore
+            </a>
         </div>
 
     </main>
@@ -111,7 +110,7 @@ HTML;
     }
 
 
-    /** ✅ TABLE DYNAMIQUE */
+    /** ✅ TABLE DYNAMIQUE AVEC ICÔNES */
     private function getTableBody() {
         global $gvPath;
         $ops = Operator::fromDatabaseCompleteList();
@@ -122,6 +121,7 @@ HTML;
 
         $html = "";
         foreach ($ops as $op) {
+
             $id   = $op->getId();
             $code = $op->getCode();
             $name = $op->getFullName();
@@ -130,10 +130,17 @@ HTML;
 <tr>
     <td>$code</td>
     <td>$name</td>
-    <td>
-        <a class="action-link" href="$gvPath/application/adminOperatorEdit?op_id=$id">Modifica</a>
-        |
-        <a class="remove-link" href="$gvPath/ajax/removeRecord?op_id=$id">Rimuovi</a>
+    <td class="actions-col">
+
+        <a class="icon-btn edit" href="$gvPath/application/adminOperatorEdit?op_id=$id">
+            <i class="fa-solid fa-pen-to-square"></i>
+        </a>
+
+        <a class="icon-btn delete" href="$gvPath/ajax/removeRecord?op_id=$id"
+           onclick="return confirm('Confermi la rimozione?');">
+            <i class="fa-solid fa-trash"></i>
+        </a>
+
     </td>
 </tr>
 HTML;
@@ -142,9 +149,12 @@ HTML;
     }
 
 
-    /** ✅ CSS STYLE COMPLET — VIOLET COMME L'IMAGE */
+    /** ✅ CSS STYLE VIOLET + ICONES PRO */
     private function getDesignCSS() {
         return <<<CSS
+<!-- ✅ Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 
 /* GLOBAL */
@@ -158,144 +168,106 @@ body {
     height: 100vh;
 }
 
-/* ✅ SIDEBAR VIOLETTE */
+/* ✅ SIDEBAR */
 .sidebar {
     width: 250px;
-    background: linear-gradient(180deg, #6C63FF, #8978FF, #CAB8FF);
-    color: white;
-    padding: 25px 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: 0 25px 25px 0;
-    box-shadow: 3px 0 15px rgba(0,0,0,0.08);
+    background: linear-gradient(180deg,#6C63FF,#8978FF,#CAB8FF);
+    color:white;
+    padding:25px 0;
+    border-radius:0 25px 25px 0;
+    display:flex;
+    flex-direction:column;
+    box-shadow:3px 0 15px rgba(0,0,0,0.08);
+}
+.sidebar-header { text-align:center; margin-bottom:35px; }
+.logo-circle {
+    width:60px;height:60px;background:white;color:#6C63FF;
+    border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:26px;font-weight:800;
+    margin:0 auto 10px;
+}
+.brand { opacity:.85; font-size:17px; }
+
+/* MENU */
+.menu { display:flex; flex-direction:column; }
+.menu-item {
+    padding:12px 25px; color:white; text-decoration:none;
+    display:flex; gap:12px; align-items:center;
+    opacity:.85; transition:.25s;
+}
+.menu-item:hover { opacity:1; background:rgba(255,255,255,0.18); }
+.menu-item.active { background:rgba(255,255,255,0.27); font-weight:bold; }
+
+/* BAS */
+.menu-bottom { margin-top:auto; }
+.logout:hover { background:rgba(255,40,40,0.28); }
+
+/* CONTENT */
+.content { flex:1; padding:45px; overflow-y:auto; }
+.page-title { font-size:28px; margin-bottom:30px; }
+
+/* TABLE */
+.table-container {
+    background:white; padding:20px; border-radius:15px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.08);
+}
+.styled-table { width:100%; border-collapse:collapse; }
+.styled-table th {
+    background:#6C63FF; color:white; padding:12px;
+    border-radius:6px; text-align:left;
+}
+.styled-table td { padding:12px; border-bottom:1px solid #eee; }
+.styled-table tr:hover { background:#F3EEFF; }
+
+/* ✅ ICON BUTTONS */
+.actions-col {
+    display:flex;
+    gap:10px;
 }
 
-/* Header */
-.sidebar-header {
-    text-align: center;
-    margin-bottom: 35px;
-}
-.logo-circle {
-    width: 60px;
-    height: 60px;
-    background:white;
-    border-radius: 50%;
+.icon-btn {
+    width:38px;
+    height:38px;
+    border-radius:10px;
     display:flex;
     align-items:center;
     justify-content:center;
-    margin:0 auto 10px auto;
-    font-size:26px;
-    font-weight:800;
-    color:#6C63FF;
-}
-.brand {
-    font-size: 17px;
-    opacity: 0.85;
+    color:white;
+    font-size:16px;
+    text-decoration:none;
 }
 
-/* ✅ Menu */
-.menu {
-    display: flex;
-    flex-direction: column;
+/* Modifier */
+.icon-btn.edit {
+    background:#6C63FF;
 }
-.menu-item {
-    padding: 12px 25px;
-    color:white;
-    text-decoration:none;
-    font-size:15px;
-    display:flex;
-    gap:12px;
+.icon-btn.edit:hover {
+    background:#5149E8;
+}
+
+/* Supprimer */
+.icon-btn.delete {
+    background:#D94141;
+}
+.icon-btn.delete:hover {
+    background:#B32E2E;
+}
+
+/* Ajouter bouton */
+.btn-add {
+    display:inline-flex;
     align-items:center;
-    transition:0.25s;
-    opacity:0.85;
-}
-.menu-item:hover {
-    opacity:1;
-    background:rgba(255,255,255,0.15);
-}
-.menu-item.active {
-    background:rgba(255,255,255,0.25);
-    font-weight:bold;
-}
-
-/* ✅ Bas de la sidebar */
-.menu-bottom {
-    margin-top:auto;
-    display:flex;
-    flex-direction:column;
-}
-.logout:hover {
-    background:rgba(255,50,50,0.25);
-}
-
-/* ✅ CONTENU */
-.content {
-    flex:1;
-    padding:45px;
-    overflow-y:auto;
-}
-.page-title {
-    font-size:28px;
-    margin-bottom:30px;
-}
-
-/* ✅ TABLE */
-.table-container {
-    background:white;
-    padding:20px;
-    border-radius:15px;
-    box-shadow:0 4px 20px rgba(0,0,0,0.08);
-}
-.styled-table {
-    width:100%;
-    border-collapse:collapse;
-}
-.styled-table th {
+    gap:10px;
     background:#6C63FF;
     color:white;
-    padding:12px;
-    text-align:left;
-    border-radius:6px;
-}
-.styled-table td {
-    padding:12px;
-    border-bottom:1px solid #eee;
-}
-.styled-table tr:hover {
-    background:#F3EEFF;
-}
-
-/* ✅ ACTION LINKS */
-.action-link {
-    color:#6C63FF;
-    font-weight:600;
-    text-decoration:none;
-}
-.remove-link {
-    color:#d9534f;
-    font-weight:600;
-    text-decoration:none;
-}
-.action-link:hover,
-.remove-link:hover {
-    text-decoration:underline;
-}
-
-/* ✅ ADD BUTTON */
-.add-btn-wrapper {
-    margin-top:22px;
-}
-.btn-primary {
-    background:#6C63FF;
-    color:white;
-    padding:12px 25px;
+    padding:12px 22px;
     border-radius:30px;
-    font-size:15px;
     text-decoration:none;
     font-weight:600;
+    margin-top:25px;
 }
-.btn-primary:hover {
-    background:#5149e8;
+.btn-add:hover {
+    background:#5149E8;
 }
 
 </style>

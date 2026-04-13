@@ -22,7 +22,7 @@ class AdminDeviceList extends Page {
     }
 
 
-    /** ✅ LAYOUT COMPLET AVEC SIDEBAR VIOLETTE PREMIUM */
+    /** ✅ LAYOUT COMPLET AVEC SIDEBAR PREMIUM + ICONES */
     private function getLayout() {
 
         global $gvPath;
@@ -31,7 +31,7 @@ class AdminDeviceList extends Page {
         return <<<HTML
 <div class="layout">
 
-    <!-- ✅ SIDEBAR -->
+    <!-- ✅ SIDEBAR VIOLETTE -->
     <aside class="sidebar">
 
         <div class="sidebar-header">
@@ -42,40 +42,40 @@ class AdminDeviceList extends Page {
         <nav class="menu">
 
             <a class="menu-item" href="$gvPath/application/adminPage">
-                <span>🏠</span> Dashboard
+                <i class="fa-solid fa-house"></i> Dashboard
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminOperatorList">
-                <span>👤</span> Operatori
+                <i class="fa-solid fa-user-gear"></i> Operatori
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminDeskList">
-                <span>🖥️</span> Sportelli
+                <i class="fa-solid fa-desktop"></i> Sportelli
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminTopicalDomainList">
-                <span>📂</span> Aree Tematiche
+                <i class="fa-solid fa-folder-tree"></i> Aree Tematiche
             </a>
 
             <a class="menu-item active" href="$gvPath/application/adminDeviceList">
-                <span>📱</span> Dispositivi
+                <i class="fa-solid fa-display"></i> Dispositivi
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminStats">
-                <span>📈</span> Statistiche
+                <i class="fa-solid fa-chart-line"></i> Statistiche
             </a>
 
         </nav>
 
-        <!-- ✅ BAS - PARAMÈTRES ET DECONNEXION -->
+        <!-- ✅ BAS DE SIDEBAR -->
         <div class="menu-bottom">
 
             <a class="menu-item" href="$gvPath/application/adminSettings">
-                <span>⚙️</span> Impostazioni
+                <i class="fa-solid fa-gear"></i> Impostazioni
             </a>
 
             <a class="menu-item logout" href="$gvPath/application/logoutPage">
-                <span>🚪</span> Logout
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
             </a>
 
         </div>
@@ -102,8 +102,8 @@ class AdminDeviceList extends Page {
         </div>
 
         <div class="actions">
-            <a class="btn-primary" href="$gvPath/application/adminDeviceEdit">
-                + Aggiungi dispositivo
+            <a class="btn-add" href="$gvPath/application/adminDeviceEdit">
+                <i class="fa-solid fa-plus"></i> Aggiungi dispositivo
             </a>
         </div>
 
@@ -114,8 +114,7 @@ HTML;
     }
 
 
-
-    /** ✅ TABLE BODY — TOUS LES LIENS 100% CORRIGÉS */
+    /** ✅ TABLE BODY AVEC ICONES PRO */
     private function getTableBody() {
         global $gvPath;
 
@@ -145,10 +144,16 @@ HTML;
     <td>$ip</td>
     <td>$role</td>
     <td>$tdTxt</td>
-    <td>
-        <a class="action-link" href="$gvPath/application/adminDeviceEdit?dev_id=$id">Modifica</a>
-        |
-        <a class="remove-link" href="$gvPath/ajax/removeRecord?dev_id=$id">Rimuovi</a>
+    <td class="actions-col">
+
+        <a href="$gvPath/application/adminDeviceEdit?dev_id=$id" class="icon-btn edit">
+            <i class="fa-solid fa-pen-to-square"></i>
+        </a>
+
+        <a href="$gvPath/ajax/removeRecord?dev_id=$id" class="icon-btn delete">
+            <i class="fa-solid fa-trash"></i>
+        </a>
+
     </td>
 </tr>
 HTML;
@@ -165,9 +170,11 @@ HTML;
 
 
 
-    /** ✅ CSS complet : Sidebar violette + tableau pastel + boutons arrondis */
+    /** ✅ CSS PREMIUM COMPLET (ICÔNES + VIOLET) */
     private function getDesignCSS() {
         return <<<CSS
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 
 /* GLOBAL */
@@ -181,43 +188,32 @@ body {
     height: 100vh;
 }
 
-/* ✅ SIDEBAR PREMIUM */
+/* ✅ SIDEBAR */
 .sidebar {
     width: 250px;
-    background: linear-gradient(180deg, #6C63FF, #8978FF, #CAB8FF);
-    color: white;
-    padding: 25px 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: 0 25px 25px 0;
-    box-shadow: 3px 0 15px rgba(0,0,0,0.08);
+    background: linear-gradient(180deg,#6C63FF,#8978FF,#CAB8FF);
+    color:white;
+    padding:25px 0;
+    display:flex;
+    flex-direction:column;
+    border-radius:0 25px 25px 0;
+    box-shadow:3px 0 15px rgba(0,0,0,0.08);
 }
 
-/* Logo */
 .logo-circle {
-    width: 60px;
-    height: 60px;
-    background:white;
+    width:60px;height:60px;background:white;
     border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin:0 auto 10px auto;
-    font-size:26px;
-    font-weight:800;
+    display:flex;align-items:center;justify-content:center;
     color:#6C63FF;
+    font-size:26px;font-weight:800;
+    margin:0 auto 10px auto;
 }
 
 .sidebar-header {
     text-align:center;
     margin-bottom:35px;
 }
-.brand {
-    font-size:17px;
-    opacity:0.85;
-}
 
-/* ✅ MENU */
 .menu {
     display:flex;
     flex-direction:column;
@@ -225,35 +221,20 @@ body {
 
 .menu-item {
     padding:12px 25px;
+    display:flex;
+    align-items:center;
+    gap:12px;
     color:white;
     text-decoration:none;
-    font-size:15px;
-    display:flex;
-    gap:12px;
-    align-items:center;
-    transition:0.25s;
-    opacity:0.85;
+    opacity:.85;
+    transition:.25s;
 }
-.menu-item:hover {
-    opacity:1;
-    background:rgba(255,255,255,0.15);
-}
-.menu-item.active {
-    background:rgba(255,255,255,0.25);
-    font-weight:bold;
-}
+.menu-item:hover { opacity:1; background:rgba(255,255,255,0.15); }
+.menu-item.active { background:rgba(255,255,255,0.25); font-weight:bold; }
 
-/* ✅ BAS */
-.menu-bottom {
-    margin-top:auto;
-    display:flex;
-    flex-direction:column;
-}
-.logout:hover {
-    background:rgba(255,50,50,0.25);
-}
+.menu-bottom { margin-top:auto; }
 
-/* ✅ CONTENU */
+/* ✅ CONTENT */
 .content {
     flex:1;
     padding:45px;
@@ -264,13 +245,14 @@ body {
     margin-bottom:25px;
 }
 
-/* ✅ TABLEAU */
+/* ✅ TABLE */
 .table-container {
     background:white;
     padding:22px;
     border-radius:15px;
     box-shadow:0 4px 18px rgba(0,0,0,0.08);
 }
+
 .styled-table {
     width:100%;
     border-collapse:collapse;
@@ -290,38 +272,45 @@ body {
     background:#F3EEFF;
 }
 
-/* ✅ ACTIONS */
-.actions {
-    margin-top:25px;
+/* ✅ ICONES ACTIONS */
+.actions-col {
+    display:flex;
+    gap:12px;
 }
-.btn-primary {
+
+.icon-btn {
+    width:38px;height:38px;
+    display:flex;justify-content:center;align-items:center;
+    border-radius:10px;
+    color:white;
+    text-decoration:none;
+    font-size:18px;
+}
+
+/* Modifier */
+.icon-btn.edit { background:#6C63FF; }
+.icon-btn.edit:hover { background:#5149E8; }
+
+/* Supprimer */
+.icon-btn.delete { background:#D94141; }
+.icon-btn.delete:hover { background:#B02D2D; }
+
+/* ✅ BOUTON AJOUTER */
+.btn-add {
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
     background:#6C63FF;
     color:white;
     padding:12px 25px;
     border-radius:30px;
+    font-weight:600;
+    text-decoration:none;
+    margin-top:25px;
     font-size:15px;
-    font-weight:600;
-    text-decoration:none;
 }
-.btn-primary:hover {
+.btn-add:hover {
     background:#5149E8;
-}
-
-/* ✅ LIENS ACTIONS */
-.action-link {
-    color:#6C63FF;
-    font-weight:600;
-    text-decoration:none;
-}
-.action-link:hover { text-decoration:underline; }
-
-.remove-link {
-    color:#d9534f;
-    font-weight:600;
-    text-decoration:none;
-}
-.remove-link:hover {
-    text-decoration:underline;
 }
 
 </style>

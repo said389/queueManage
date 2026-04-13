@@ -11,7 +11,7 @@ class AdminSettings extends Page {
     public function execute() {
         global $gvEditableConfs, $gvDirectory;
 
-        $modifiedConfs = array();
+        $modifiedConfs = [];
 
         foreach ($gvEditableConfs as $conf) {
 
@@ -42,9 +42,10 @@ class AdminSettings extends Page {
             }
 
             global $gvPath;
-            $this->message = 
+            $this->message =
                 "Configurazione salvata correttamente.<br>" .
                 "È possibile tornare al <a href=\"$gvPath/application/adminPage\">menù principale</a>.";
+
             return true;
 
         } else {
@@ -65,12 +66,12 @@ class AdminSettings extends Page {
     }
 
 
-    /** ✅ SIDEBAR + LAYOUT COMPLET */
+    /** ✅ LAYOUT COMPLET */
     private function getLayout() {
         global $gvPath;
 
-        $message = $this->message 
-            ? "<div class='message-box'>{$this->message}</div>" 
+        $messageBox = $this->message
+            ? "<div class='message-box'><i class=\"fa-solid fa-circle-check\"></i> {$this->message}</div>"
             : "";
 
         $form = $this->getForm();
@@ -78,7 +79,7 @@ class AdminSettings extends Page {
         return <<<HTML
 <div class="layout">
 
-    <!-- ✅ SIDEBAR VIOLETTE -->
+    <!-- ✅ SIDEBAR -->
     <aside class="sidebar">
 
         <div class="sidebar-header">
@@ -89,40 +90,39 @@ class AdminSettings extends Page {
         <nav class="menu">
 
             <a class="menu-item" href="$gvPath/application/adminPage">
-                <span>🏠</span> Dashboard
+                <i class="fa-solid fa-house"></i> Dashboard
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminOperatorList">
-                <span>👤</span> Operatori
+                <i class="fa-solid fa-user-gear"></i> Operatori
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminDeskList">
-                <span>🖥️</span> Sportelli
+                <i class="fa-solid fa-desktop"></i> Sportelli
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminTopicalDomainList">
-                <span>📂</span> Aree Tematiche
+                <i class="fa-solid fa-folder-tree"></i> Aree Tematiche
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminDeviceList">
-                <span>📱</span> Dispositivi
+                <i class="fa-solid fa-display"></i> Dispositivi
             </a>
 
             <a class="menu-item" href="$gvPath/application/adminStats">
-                <span>📈</span> Statistiche
+                <i class="fa-solid fa-chart-line"></i> Statistiche
             </a>
 
-            
         </nav>
 
-       <div class="menu-bottom">
+        <div class="menu-bottom">
 
-            <a href="$gvPath/application/adminSettings" class="menu-item active">
-                <span>⚙️</span> Impostazioni
+            <a class="menu-item active" href="$gvPath/application/adminSettings">
+                <i class="fa-solid fa-gear"></i> Impostazioni
             </a>
 
-            <a href="$gvPath/application/logoutPage" class="menu-item logout">
-                <span>🚪</span> Logout
+            <a class="menu-item logout" href="$gvPath/application/logoutPage">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
             </a>
 
         </div>
@@ -133,9 +133,9 @@ class AdminSettings extends Page {
     <!-- ✅ CONTENU -->
     <main class="content">
 
-        <h2 class="page-title">Impostazioni di Sistema</h2>
+        <h2 class="page-title"><i class="fa-solid fa-gear"></i> Impostazioni di Sistema</h2>
 
-        $message
+        $messageBox
 
         <div class="settings-table-container">
             $form
@@ -148,7 +148,7 @@ HTML;
     }
 
 
-    /** ✅ FORMULAIRE DES PARAMÈTRES (stylé) */
+    /** ✅ FORMULAIRE */
     public function getForm() {
         global $gvEditableConfs;
 
@@ -172,7 +172,9 @@ HTML;
         $fields
         <tr>
             <td colspan="2" style="text-align:right;">
-                <button class="save-btn" type="submit">Salva</button>
+                <button class="save-btn" type="submit">
+                    <i class="fa-solid fa-floppy-disk"></i> Salva
+                </button>
             </td>
         </tr>
     </table>
@@ -181,39 +183,43 @@ HTML;
     }
 
 
-    /** ✅ Inputs */
+    /** ✅ INPUTS */
     protected function generateInputTag($conf) {
 
         $tagName = 'input';
         $attributes = '';
-        $value = $GLOBALS[$conf->getName()];
+        $value = htmlspecialchars($GLOBALS[$conf->getName()]);
         $type = $conf->getType();
 
         if ($type == 'integer') {
             $attributes .= ' type="number"';
-        } elseif ($type == 'boolean') {
+        }
+        elseif ($type == 'boolean') {
             $attributes .= ' type="checkbox"';
             if ($value) { $attributes .= ' checked'; }
             $value = 1;
-        } elseif ($type == 'textarea') {
+        }
+        elseif ($type == 'textarea') {
             $tagName = 'textarea';
             $attributes .= ' cols="30" rows="5"';
-        } else {
+        }
+        else {
             $attributes .= ' type="text" size="30"';
         }
 
         if ($tagName == 'input') {
             return "<input name=\"{$conf->getName()}\" value=\"$value\" $attributes />";
-        } 
-        else {
+        } else {
             return "<textarea name=\"{$conf->getName()}\" $attributes>$value</textarea>";
         }
     }
 
 
-    /** ✅ CSS PREMIUM VIOLET */
+    /** ✅ CSS PREMIUM */
     private function getDesignCSS() {
         return <<<CSS
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 
 body {
@@ -279,18 +285,25 @@ body {
 .page-title {
     font-size:28px;
     margin-bottom:25px;
+    display:flex;
+    gap:10px;
+    align-items:center;
 }
 
 /* ✅ MESSAGE */
 .message-box {
     padding:15px;
-    background:#E0D9FF;
+    background:#E8E2FF;
     border-left:5px solid #6C63FF;
     border-radius:8px;
     margin-bottom:20px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    font-weight:600;
 }
 
-/* ✅ FORMULAIRE */
+/* ✅ FORM */
 .settings-table-container {
     background:white;
     padding:25px;
@@ -305,7 +318,6 @@ body {
     padding:12px;
     border-bottom:1px solid #eee;
 }
-
 .settings-table input[type="text"],
 .settings-table input[type="number"],
 .settings-table textarea {
@@ -313,6 +325,7 @@ body {
     padding:10px;
     border-radius:8px;
     border:1px solid #ccc;
+    font-size:15px;
 }
 
 .save-btn {
@@ -323,9 +336,16 @@ body {
     border:none;
     font-weight:600;
     cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:10px;
 }
 .save-btn:hover {
     background:#5149E8;
+}
+
+.logout:hover {
+    background:rgba(255,50,50,0.25);
 }
 
 </style>

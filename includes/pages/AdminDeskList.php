@@ -21,7 +21,7 @@ class AdminDeskList extends Page {
         return $page;
     }
 
-    /** ✅ LAYOUT COMPLET AVEC SIDEBAR VIOLETTE */
+    /** ✅ LAYOUT AVEC SIDEBAR + ICONES PRO */
     private function getLayout() {
 
         global $gvPath;
@@ -40,44 +40,44 @@ class AdminDeskList extends Page {
 
         <nav class="menu">
 
-            <a href="$gvPath/application/adminPage" class="menu-item ">
-                <span>🏠</span> Dashboard
+            <a href="$gvPath/application/adminPage" class="menu-item">
+                <i class="fa-solid fa-house"></i> Dashboard
             </a>
 
             <a href="$gvPath/application/adminOperatorList" class="menu-item">
-                <span>👤</span> Operatori
+                <i class="fa-solid fa-user-gear"></i> Operatori
             </a>
 
             <a href="$gvPath/application/adminDeskList" class="menu-item active">
-                <span>🖥️</span> Sportelli
+                <i class="fa-solid fa-desktop"></i> Sportelli
             </a>
 
             <a href="$gvPath/application/adminTopicalDomainList" class="menu-item">
-                <span>📂</span> Aree Tematiche
+                <i class="fa-solid fa-folder-tree"></i> Aree Tematiche
             </a>
 
             <a href="$gvPath/application/adminDeviceList" class="menu-item">
-                <span>📱</span> Dispositivi
+                <i class="fa-solid fa-display"></i> Dispositivi
             </a>
 
             <a href="$gvPath/application/adminStats" class="menu-item">
-                <span>📈</span> Statistiche
+                <i class="fa-solid fa-chart-line"></i> Statistiche
             </a>
 
         </nav>
 
-        <!-- ✅ PARAMÈTRES & LOGOUT EN BAS DE LA SIDEBAR -->
         <div class="menu-bottom">
 
             <a href="$gvPath/application/adminSettings" class="menu-item">
-                <span>⚙️</span> Impostazioni
+                <i class="fa-solid fa-gear"></i> Impostazioni
             </a>
 
             <a href="$gvPath/application/logoutPage" class="menu-item logout">
-                <span>🚪</span> Logout
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
             </a>
 
         </div>
+
     </aside>
 
 
@@ -99,8 +99,13 @@ class AdminDeskList extends Page {
         </div>
 
         <div class="actions">
-            <a href="$gvPath/application/adminDeskEdit" class="btn-primary">+ Aggiungi sportello manualmente</a>
-            <a href="$gvPath/application/adminDeskEdit?pairing=1" class="btn-primary">+ Aggiungi questo computer</a>
+            <a href="$gvPath/application/adminDeskEdit" class="btn-add">
+                <i class="fa-solid fa-plus"></i> Nuovo sportello
+            </a>
+
+            <a href="$gvPath/application/adminDeskEdit?pairing=1" class="btn-add">
+                <i class="fa-solid fa-computer"></i> Aggiungi questo computer
+            </a>
         </div>
 
     </main>
@@ -110,36 +115,44 @@ HTML;
     }
 
 
-    /** ✅ TABLE BODY */
+    /** ✅ TABLE DESK + ICONES EDIT/SUPPR */
     private function getTableBody() {
         global $gvPath;
 
         $desks = Desk::fromDatabaseCompleteList();
 
-        if (count($desks) === 0) {
+        if (!count($desks)) {
             return '<tr><td colspan="3" style="text-align:center;color:#777;padding:20px;">Nessuno sportello</td></tr>';
         }
 
-        $ret = "";
-        foreach ($desks as $desk) {
-            $id = $desk->getId();
-            $num = $desk->getNumber();
-            $ip = $desk->getIpAddress();
+        $html = "";
 
-            $ret .= <<<HTML
+        foreach ($desks as $desk) {
+
+            $id  = $desk->getId();
+            $num = $desk->getNumber();
+            $ip  = $desk->getIpAddress();
+
+            $html .= <<<HTML
 <tr>
     <td>$num</td>
     <td>$ip</td>
-    <td>
-        <a class="action-link" href="$gvPath/application/adminDeskEdit?desk_id=$id">Modifica</a>
-        |
-        <a class="remove-link" href="$gvPath/ajax/removeRecord?desk_id=$id">Rimuovi</a>
+    <td class="actions-col">
+
+        <a href="$gvPath/application/adminDeskEdit?desk_id=$id" class="icon-btn edit">
+            <i class="fa-solid fa-pen-to-square"></i>
+        </a>
+
+        <a href="$gvPath/ajax/removeRecord?desk_id=$id" class="icon-btn delete">
+            <i class="fa-solid fa-trash"></i>
+        </a>
+
     </td>
 </tr>
 HTML;
         }
 
-        return $ret;
+        return $html;
     }
 
 
@@ -148,9 +161,11 @@ HTML;
     }
 
 
-    /** ✅ CSS STYLE VIOLET EXACTEMENT COMME L'IMAGE */
+    /** ✅ CSS COMPLET (VIOLET PREMIUM + ICONES) */
     private function getDesignCSS() {
         return <<<CSS
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 
 /* GLOBAL */
@@ -167,61 +182,45 @@ body {
 /* ✅ SIDEBAR */
 .sidebar {
     width: 250px;
-    background: linear-gradient(180deg, #6C63FF, #8978FF, #CAB8FF);
-    color: white;
-    padding: 25px 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: 0 25px 25px 0;
-    box-shadow: 3px 0 15px rgba(0,0,0,0.08);
-}
-.sidebar-header {
-    text-align: center;
-    margin-bottom: 35px;
-}
-.logo-circle {
-    width: 60px; height: 60px;
-    background: white;
-    border-radius: 50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size: 26px; font-weight: 800; color: #6C63FF;
-    margin: 0 auto 10px auto;
-}
-.brand {
-    font-size: 17px;
-    opacity: 0.85;
+    background: linear-gradient(180deg,#6C63FF,#8978FF,#CAB8FF);
+    color:white;
+    padding:25px 0;
+    border-radius:0 25px 25px 0;
+    display:flex;
+    flex-direction:column;
+    box-shadow:3px 0 15px rgba(0,0,0,0.08);
 }
 
+.logo-circle {
+    width:60px;height:60px;background:white;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:#6C63FF;
+    font-size:26px;font-weight:800;
+    margin:0 auto 10px auto;
+}
+
+.sidebar-header { text-align:center;margin-bottom:35px; }
+.brand { font-size:17px; opacity:.85; }
+
 /* ✅ MENU */
-.menu { display:flex; flex-direction:column; }
+.menu { display:flex;flex-direction:column; }
+
 .menu-item {
     padding:12px 25px;
     color:white;
     text-decoration:none;
     font-size:15px;
-    display:flex; gap:12px;
-    align-items:center;
-    transition:0.25s;
-    opacity:0.85;
-}
-.menu-item:hover {
-    opacity:1;
-    background:rgba(255,255,255,0.15);
-}
-.menu-item.active {
-    background:rgba(255,255,255,0.25);
-    font-weight:bold;
-}
-
-/* ✅ MENU BAS */
-.menu-bottom {
-    margin-top:auto;
     display:flex;
-    flex-direction:column;
+    align-items:center;
+    gap:12px;
+    opacity:.85;
+    transition:.25s;
 }
-.logout:hover {
-    background:rgba(255,50,50,0.25);
-}
+.menu-item:hover { opacity:1; background:rgba(255,255,255,0.15); }
+.menu-item.active { background:rgba(255,255,255,0.30); font-weight:bold; }
+
+.menu-bottom { margin-top:auto; }
 
 /* ✅ CONTENT */
 .content {
@@ -249,48 +248,58 @@ body {
     background:#6C63FF;
     color:white;
     padding:12px;
-    text-align:left;
 }
 .styled-table td {
     padding:12px;
     border-bottom:1px solid #eee;
 }
-.styled-table tr:hover {
-    background:#F3EEFF;
-}
+.styled-table tr:hover { background:#F3EEFF; }
 
-/* ✅ ACTIONS */
-.actions {
-    margin-top:25px;
+/* ✅ ICONES ÉDIT/SUPPR */
+.actions-col {
     display:flex;
     gap:12px;
 }
-.btn-primary {
-    background:#6C63FF;
+
+.icon-btn {
+    width:38px;
+    height:38px;
+    border-radius:10px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
     color:white;
-    padding:12px 25px;
-    border-radius:30px;
-    font-size:15px;
-    font-weight:600;
+    font-size:18px;
     text-decoration:none;
-}
-.btn-primary:hover {
-    background:#5149e8;
 }
 
-.action-link {
-    color:#6C63FF;
+/* Modifier */
+.icon-btn.edit { background:#6C63FF; }
+.icon-btn.edit:hover { background:#5149E8; }
+
+/* Supprimer */
+.icon-btn.delete { background:#D94141; }
+.icon-btn.delete:hover { background:#B02D2D; }
+
+/* ✅ BUTTON AJOUTER */
+.btn-add {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:#6C63FF;
+    color:white;
+    padding:12px 22px;
+    border-radius:30px;
     font-weight:600;
     text-decoration:none;
+    margin-top:25px;
 }
-.remove-link {
-    color:#d9534f;
-    font-weight:600;
-    text-decoration:none;
-}
-.action-link:hover,
-.remove-link:hover {
-    text-decoration:underline;
+.btn-add:hover { background:#5149E8; }
+
+.actions {
+    display:flex;
+    gap:15px;
+    margin-top:25px;
 }
 
 </style>

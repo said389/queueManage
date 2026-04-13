@@ -26,7 +26,7 @@ class AdminPage extends Page {
         return <<<HTML
 <div class="layout">
 
-    <!-- ✅ SIDEBAR STYLE COMME L’IMAGE -->
+    <!-- ✅ SIDEBAR -->
     <aside class="sidebar">
 
         <div class="sidebar-header">
@@ -37,43 +37,44 @@ class AdminPage extends Page {
         <nav class="menu">
 
             <a href="$gvPath/application/adminPage" class="menu-item active">
-                <span>🏠</span> Dashboard
+                <i class="fa-solid fa-house"></i> Dashboard
             </a>
 
             <a href="$gvPath/application/adminOperatorList" class="menu-item">
-                <span>👤</span> Operatori
+                <i class="fa-solid fa-user-gear"></i> Operatori
             </a>
 
             <a href="$gvPath/application/adminDeskList" class="menu-item">
-                <span>🖥️</span> Sportelli
+                <i class="fa-solid fa-desktop"></i> Sportelli
             </a>
 
             <a href="$gvPath/application/adminTopicalDomainList" class="menu-item">
-                <span>📂</span> Aree Tematiche
+                <i class="fa-solid fa-folder-tree"></i> Aree Tematiche
             </a>
 
             <a href="$gvPath/application/adminDeviceList" class="menu-item">
-                <span>📱</span> Dispositivi
+                <i class="fa-solid fa-display"></i> Dispositivi
             </a>
 
             <a href="$gvPath/application/adminStats" class="menu-item">
-                <span>📈</span> Statistiche
+                <i class="fa-solid fa-chart-line"></i> Statistiche
             </a>
 
         </nav>
 
-        <!-- ✅ PARAMÈTRES & LOGOUT EN BAS DE LA SIDEBAR -->
+        <!-- ✅ Menu bas -->
         <div class="menu-bottom">
 
             <a href="$gvPath/application/adminSettings" class="menu-item">
-                <span>⚙️</span> Impostazioni
+                <i class="fa-solid fa-gear"></i> Impostazioni
             </a>
 
             <a href="$gvPath/application/logoutPage" class="menu-item logout">
-                <span>🚪</span> Logout
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
             </a>
 
         </div>
+
     </aside>
 
 
@@ -82,7 +83,7 @@ class AdminPage extends Page {
 
         <h2 class="page-title">Dashboard</h2>
 
-        <!-- ✅ WIDGET TOP -->
+        <!-- ✅ WIDGET -->
         <div class="widget">
             <div class="widget-number">$operatorCount</div>
             <div class="widget-label">
@@ -91,43 +92,55 @@ class AdminPage extends Page {
             </div>
         </div>
 
-        <!-- ✅ CARTES STYLE PASTEL -->
+        <!-- ✅ CARTES -->
         <div class="cards">
 
             <div class="card">
-                <h3>Operatori</h3>
-                <p>Gestione completa degli operatori del sistema.</p>
-                <a href="$gvPath/application/adminOperatorList" class="card-link">Apri →</a>
+                <h3><i class="fa-solid fa-user-gear"></i> Operatori</h3>
+                <p>Gestione completa degli operatori.</p>
+                <a href="$gvPath/application/adminOperatorList" class="card-link">
+                    <i class="fa-solid fa-up-right-from-square"></i> Apri
+                </a>
             </div>
 
             <div class="card">
-                <h3>Sportelli</h3>
+                <h3><i class="fa-solid fa-desktop"></i> Sportelli</h3>
                 <p>Configurazione e supervisione degli sportelli.</p>
-                <a href="$gvPath/application/adminDeskList" class="card-link">Apri →</a>
+                <a href="$gvPath/application/adminDeskList" class="card-link">
+                    <i class="fa-solid fa-up-right-from-square"></i> Apri
+                </a>
             </div>
 
             <div class="card">
-                <h3>Aree Tematiche</h3>
-                <p>Organizzazione delle code e categorie di servizio.</p>
-                <a href="$gvPath/application/adminTopicalDomainList" class="card-link">Apri →</a>
+                <h3><i class="fa-solid fa-folder-tree"></i> Aree Tematiche</h3>
+                <p>Organizzazione delle aree di servizio.</p>
+                <a href="$gvPath/application/adminTopicalDomainList" class="card-link">
+                    <i class="fa-solid fa-up-right-from-square"></i> Apri
+                </a>
             </div>
 
             <div class="card">
-                <h3>Dispositivi</h3>
-                <p>Monitoraggio e gestione dei dispositivi connessi.</p>
-                <a href="$gvPath/application/adminDeviceList" class="card-link">Apri →</a>
+                <h3><i class="fa-solid fa-display"></i> Dispositivi</h3>
+                <p>Monitoraggio e gestione dei dispositivi collegati.</p>
+                <a href="$gvPath/application/adminDeviceList" class="card-link">
+                    <i class="fa-solid fa-up-right-from-square"></i> Apri
+                </a>
             </div>
 
             <div class="card">
-                <h3>Statistiche</h3>
-                <p>Analisi e report dettagliati sull’uso del sistema.</p>
-                <a href="$gvPath/application/adminStats" class="card-link">Apri →</a>
+                <h3><i class="fa-solid fa-chart-line"></i> Statistiche</h3>
+                <p>Analisi dettagliate sull'attività del sistema.</p>
+                <a href="$gvPath/application/adminStats" class="card-link">
+                    <i class="fa-solid fa-up-right-from-square"></i> Apri
+                </a>
             </div>
 
             <div class="card">
-                <h3>Impostazioni</h3>
-                <p>Configurazioni generali del sistema FastQueue.</p>
-                <a href="$gvPath/application/adminSettings" class="card-link">Apri →</a>
+                <h3><i class="fa-solid fa-gear"></i> Impostazioni</h3>
+                <p>Impostazioni generali del sistema FastQueue.</p>
+                <a href="$gvPath/application/adminSettings" class="card-link">
+                    <i class="fa-solid fa-up-right-from-square"></i> Apri
+                </a>
             </div>
 
         </div>
@@ -138,49 +151,49 @@ class AdminPage extends Page {
 HTML;
     }
 
+
+    /** ✅ CSS complet avec FontAwesome */
     private function getDesignCSS() {
         return <<<CSS
+<!-- ✅ Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 
-/* ✅ GLOBAL */
 body {
     margin: 0;
     background: #F0ECFF;
     font-family: 'Segoe UI', sans-serif;
 }
 
-/* ✅ LAYOUT */
 .layout {
     display: flex;
-    width: 100%;
     height: 100vh;
 }
 
-/* ✅ SIDEBAR (STYLE IDENTIQUE À L’IMAGE) */
+/* ✅ SIDEBAR */
 .sidebar {
     width: 250px;
     background: linear-gradient(180deg, #6C63FF, #8B7FFF, #C7B8FF);
-    color: white;
     padding: 25px 0;
+    border-radius: 0 25px 25px 0;
     display: flex;
     flex-direction: column;
-    border-radius: 0 25px 25px 0;
-    box-shadow: 2px 0 15px rgba(0,0,0,0.08);
+    color: white;
 }
 
-/* Logo */
 .logo-circle {
     width: 65px;
     height: 65px;
     border-radius: 50%;
     background: white;
-    margin: 0 auto 10px auto;
+    font-size: 26px;
+    color: #6C63FF;
+    font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6C63FF;
-    font-size: 26px;
-    font-weight: 800;
+    margin: 0 auto 10px auto;
 }
 
 .sidebar-header {
@@ -189,29 +202,25 @@ body {
 }
 
 .brand {
-    margin: 0;
     font-size: 17px;
     opacity: 0.85;
-    margin-top: 5px;
 }
 
 /* ✅ MENU */
 .menu {
     display: flex;
     flex-direction: column;
-    gap: 5px;
 }
 
 .menu-item {
     padding: 12px 25px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     color: white;
     text-decoration: none;
-    font-size: 15px;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    opacity: 0.9;
-    transition: 0.25s;
+    opacity: .85;
+    transition: .25s;
 }
 
 .menu-item:hover {
@@ -224,19 +233,11 @@ body {
     font-weight: bold;
 }
 
-/* ✅ BAS DE LA SIDEBAR */
 .menu-bottom {
     margin-top: auto;
-    display: flex;
-    flex-direction: column;
 }
 
-/* Logout rouge */
-.logout:hover {
-    background: rgba(255, 50, 50, 0.28);
-}
-
-/* ✅ MAIN CONTENT */
+/* ✅ CONTENU */
 .content {
     flex: 1;
     padding: 40px;
@@ -248,14 +249,14 @@ body {
     margin-bottom: 25px;
 }
 
-/* ✅ Widget */
+/* ✅ WIDGET */
 .widget {
-    background: white;
-    padding: 25px;
-    border-radius: 15px;
     display: flex;
     align-items: center;
     gap: 20px;
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
     box-shadow: 0 4px 22px rgba(0,0,0,0.08);
     margin-bottom: 35px;
 }
@@ -266,7 +267,7 @@ body {
     color: #6C63FF;
 }
 
-/* ✅ Cards pastel style */
+/* ✅ CARDS */
 .cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
@@ -278,14 +279,24 @@ body {
     padding: 22px;
     border-radius: 15px;
     box-shadow: 0 4px 22px rgba(0,0,0,0.08);
-    transition: 0.25s;
+    transition: .25s;
 }
 
 .card:hover {
     transform: translateY(-3px);
 }
 
+.card h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
     color: #6C63FF;
     font-weight: 600;
     text-decoration: none;

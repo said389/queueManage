@@ -20,7 +20,7 @@ class AdminTopicalDomainList extends Page {
         return $page;
     }
 
-    /** ✅ LAYOUT COMPLET AVEC SIDEBAR VIOLET */
+    /** ✅ LAYOUT COMPLET AVEC SIDEBAR + ICONES PRO */
     private function getLayout() {
         global $gvPath;
 
@@ -37,20 +37,40 @@ class AdminTopicalDomainList extends Page {
             <h3 class="brand">FastQueue Admin</h3>
         </div>
 
-        <!-- ✅ MENU PRINCIPAL -->
         <nav class="menu">
-            <a class="menu-item" href="$gvPath/application/adminPage"><span>🏠</span> Dashboard</a>
-            <a class="menu-item" href="$gvPath/application/adminOperatorList"><span>👤</span> Operatori</a>
-            <a class="menu-item" href="$gvPath/application/adminDeskList"><span>🖥️</span> Sportelli</a>
-            <a class="menu-item active" href="$gvPath/application/adminTopicalDomainList"><span>📂</span> Aree Tematiche</a>
-            <a class="menu-item" href="$gvPath/application/adminDeviceList"><span>📱</span> Dispositivi</a>
-            <a class="menu-item" href="$gvPath/application/adminStats"><span>📈</span> Statistiche</a>
+            <a class="menu-item" href="$gvPath/application/adminPage">
+                <i class="fa-solid fa-house"></i> Dashboard
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminOperatorList">
+                <i class="fa-solid fa-user-gear"></i> Operatori
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminDeskList">
+                <i class="fa-solid fa-desktop"></i> Sportelli
+            </a>
+
+            <a class="menu-item active" href="$gvPath/application/adminTopicalDomainList">
+                <i class="fa-solid fa-folder-tree"></i> Aree Tematiche
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminDeviceList">
+                <i class="fa-solid fa-display"></i> Dispositivi
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminStats">
+                <i class="fa-solid fa-chart-line"></i> Statistiche
+            </a>
         </nav>
 
-        <!-- ✅ MENU EN BAS -->
         <div class="menu-bottom">
-            <a class="menu-item" href="$gvPath/application/adminSettings"><span>⚙️</span> Impostazioni</a>
-            <a class="menu-item logout" href="$gvPath/application/logoutPage"><span>🚪</span> Logout</a>
+            <a class="menu-item" href="$gvPath/application/adminSettings">
+                <i class="fa-solid fa-gear"></i> Impostazioni
+            </a>
+
+            <a class="menu-item logout" href="$gvPath/application/logoutPage">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
         </div>
 
     </aside>
@@ -77,7 +97,9 @@ class AdminTopicalDomainList extends Page {
         </div>
 
         <div class="actions">
-            <a class="btn-primary" href="$gvPath/application/adminTopicalDomainEdit">+ Aggiungi area tematica</a>
+            <a class="btn-add" href="$gvPath/application/adminTopicalDomainEdit">
+                <i class="fa-solid fa-plus"></i> Nuova area tematica
+            </a>
         </div>
 
     </main>
@@ -86,7 +108,7 @@ class AdminTopicalDomainList extends Page {
 HTML;
     }
 
-    /** ✅ TABLE BODY — liens 100% corrigés */
+    /** ✅ TABLE BODY AVEC ICONES PRO */
     private function getTableBody() {
         global $gvPath;
 
@@ -100,10 +122,10 @@ HTML;
 
         foreach ($tds as $td) {
 
-            $id    = $td->getId();
-            $code  = $td->getCode();
-            $name  = $td->getName();
-            $desc  = $td->getDescription();
+            $id = $td->getId();
+            $code = $td->getCode();
+            $name = $td->getName();
+            $desc = $td->getDescription();
             $active = $td->getActive() ? "checked" : "";
 
             $html .= <<<HTML
@@ -112,9 +134,16 @@ HTML;
     <td>$name</td>
     <td>$desc</td>
     <td><input type="checkbox" disabled $active></td>
-    <td>
-        <a class="action-link" href="$gvPath/application/adminTopicalDomainEdit?td_id=$id">Modifica</a> |
-        <a class="remove-link" href="$gvPath/ajax/removeRecord?td_id=$id">Rimuovi</a>
+    <td class="actions-col">
+
+        <a class="icon-btn edit" href="$gvPath/application/adminTopicalDomainEdit?td_id=$id">
+            <i class="fa-solid fa-pen-to-square"></i>
+        </a>
+
+        <a class="icon-btn delete" href="$gvPath/ajax/removeRecord?td_id=$id">
+            <i class="fa-solid fa-trash"></i>
+        </a>
+
     </td>
 </tr>
 HTML;
@@ -127,9 +156,11 @@ HTML;
         return "Gestione aree tematiche";
     }
 
-    /** ✅ CSS STYLE VIOLET EXACTEMENT COMME LES AUTRES */
+    /** ✅ CSS PREMIUM + ICONES FONT AWESOME */
     private function getDesignCSS() {
         return <<<CSS
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 
 /* GLOBAL */
@@ -146,100 +177,89 @@ body {
 /* ✅ SIDEBAR */
 .sidebar {
     width: 250px;
-    background: linear-gradient(180deg, #6C63FF, #8978FF, #CAB8FF);
-    color: white;
-    padding: 25px 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: 0 25px 25px 0;
-    box-shadow: 3px 0 15px rgba(0,0,0,0.08);
-}
-
-.sidebar-header {
-    text-align: center;
-    margin-bottom: 35px;
-}
-
-.logo-circle {
-    width: 60px; height: 60px;
-    background:white;
-    border-radius: 50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:26px; font-weight:800;
-    color:#6C63FF;
-    margin: 0 auto 10px auto;
-}
-
-.brand {
-    font-size: 17px;
-    opacity: 0.85;
-}
-
-/* ✅ MENU */
-.menu {
-    display: flex;
-    flex-direction: column;
-}
-
-.menu-item {
-    padding: 12px 25px;
-    color: white;
-    text-decoration: none;
-    font-size: 15px;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    opacity: 0.85;
-    transition: 0.25s;
-}
-
-.menu-item:hover {
-    opacity: 1;
-    background: rgba(255,255,255,0.15);
-}
-
-.menu-item.active {
-    background: rgba(255,255,255,0.25);
-    font-weight: bold;
-}
-
-/* ✅ MENU BAS */
-.menu-bottom {
-    margin-top: auto;
+    background: linear-gradient(180deg,#6C63FF,#8978FF,#CAB8FF);
+    color:white;
+    padding:25px 0;
+    border-radius:0 25px 25px 0;
     display:flex;
     flex-direction:column;
 }
-.logout:hover {
-    background: rgba(255,50,50,0.25);
+
+.logo-circle {
+    width:60px;height:60px;
+    background:white;
+    border-radius:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:#6C63FF;
+    font-size:26px;
+    font-weight:800;
+    margin:0 auto 12px auto;
 }
 
-/* ✅ CONTENU */
+.sidebar-header {
+    text-align:center;
+    margin-bottom:35px;
+}
+
+.brand { font-size:17px; opacity:.85; }
+
+/* MENU */
+.menu {
+    display:flex;
+    flex-direction:column;
+}
+.menu-item {
+    padding:12px 25px;
+    color:white;
+    text-decoration:none;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    opacity:.85;
+    transition:.25s;
+}
+.menu-item:hover {
+    opacity:1;
+    background:rgba(255,255,255,0.15);
+}
+.menu-item.active {
+    background:rgba(255,255,255,0.30);
+    font-weight:bold;
+}
+
+/* BAS */
+.menu-bottom {
+    margin-top:auto;
+}
+
+/* CONTENT */
 .content {
-    flex: 1;
-    padding: 45px;
-    overflow-y: auto;
+    flex:1;
+    padding:45px;
+    overflow-y:auto;
 }
 .page-title {
-    font-size: 28px;
-    margin-bottom: 25px;
+    font-size:28px;
+    margin-bottom:25px;
 }
 
-/* ✅ TABLE STYLÉE */
+/* TABLE */
 .table-container {
-    background: white;
-    padding: 22px;
-    border-radius: 15px;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    background:white;
+    padding:22px;
+    border-radius:15px;
+    box-shadow:0 4px 18px rgba(0,0,0,0.08);
 }
 .styled-table {
-    width: 100%;
-    border-collapse: collapse;
+    width:100%;
+    border-collapse:collapse;
 }
 .styled-table th {
     background:#6C63FF;
     color:white;
     padding:12px;
-    text-align:left;
     border-radius:6px;
 }
 .styled-table td {
@@ -250,36 +270,52 @@ body {
     background:#F3EEFF;
 }
 
-/* ✅ BOUTONS */
-.btn-primary {
-    background:#6C63FF;
-    color:white;
-    padding:12px 25px;
-    border-radius:30px;
-    font-size:15px;
-    font-weight:600;
-    text-decoration:none;
+/* ✅ ICÔNES ACTIONS */
+.actions-col {
+    display:flex;
+    gap:10px;
 }
-.btn-primary:hover {
+
+.icon-btn {
+    width:38px;
+    height:38px;
+    border-radius:10px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:white;
+    text-decoration:none;
+    font-size:18px;
+}
+.icon-btn.edit {
+    background:#6C63FF;
+}
+.icon-btn.edit:hover {
     background:#5149E8;
 }
 
-/* ✅ LIENS */
-.action-link {
-    color:#6C63FF;
+.icon-btn.delete {
+    background:#D94141;
+}
+.icon-btn.delete:hover {
+    background:#B02D2D;
+}
+
+/* ✅ AJOUTER */
+.btn-add {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 22px;
+    background:#6C63FF;
+    color:white;
     font-weight:600;
+    border-radius:30px;
     text-decoration:none;
+    margin-top:25px;
 }
-.action-link:hover {
-    text-decoration: underline;
-}
-.remove-link {
-    color:#d9534f;
-    font-weight:600;
-    text-decoration:none;
-}
-.remove-link:hover {
-    text-decoration: underline;
+.btn-add:hover {
+    background:#5149E8;
 }
 
 </style>

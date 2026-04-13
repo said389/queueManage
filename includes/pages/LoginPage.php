@@ -72,7 +72,7 @@ class LoginPage extends Page {
         $output = new WebPageOutput();
         $output->setHtmlPageTitle("Pagina di log in");
 
-        /* ✅ CSS complet */
+        /* ✅ CSS violet premium */
         $css = <<<CSS
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -81,27 +81,32 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: hsl(210, 5%, 85%);
+
+    /* ✅ Couleur du menu violet premium */
+    background: linear-gradient(135deg, #d6d6e0, #dedcee, #CAB8FF);
+
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     padding: 20px;
 }
+
 .login-container {
     display: flex;
     width: 900px;
     max-width: 100%;
     border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
 }
 
-/* Left panel */
+/* ✅ PANEL GAUCHE (theme violet premium) */
 .left-panel {
     position: relative;
     width: 40%;
     min-height: 500px;
-    background: linear-gradient(135deg, hsl(354,82%,70%), hsl(354,62%,78%));
+    background: linear-gradient(135deg, #6C63FF, #8978FF, #CAB8FF);
     overflow: hidden;
 }
+
 .left-panel .strip-1,
 .left-panel .strip-2,
 .left-panel .strip-3 {
@@ -109,9 +114,10 @@ body {
     height: 120%;
     transform: rotate(-20deg);
 }
-.left-panel .strip-1 { left: -20%; top: 10%; width: 80%; background: hsl(354,70%,72%); }
-.left-panel .strip-2 { left: -10%; top: 15%; width: 60%; background: hsl(354,80%,68%); }
-.left-panel .strip-3 { left: 5%; top: 20%; width: 50%; background: hsl(354,60%,80%); }
+
+.left-panel .strip-1 { left: -20%; top: 10%; width: 80%; background: #7B72FF; }
+.left-panel .strip-2 { left: -10%; top: 15%; width: 60%; background: #968BFF; }
+.left-panel .strip-3 { left: 5%;   top: 20%; width: 50%; background: #D8CBFF; }
 
 .left-panel .curve {
     position: absolute; right: -40px; top: 30%;
@@ -119,7 +125,7 @@ body {
     background: white; border-radius: 9999px 0 0 9999px;
 }
 
-/* Right panel */
+/* ✅ PANEL DROIT */
 .right-panel {
     width: 60%;
     background: #fff;
@@ -136,16 +142,16 @@ body {
     padding: 40px 48px;
 }
 
-/* Title */
+/* ✅ TITRE */
 .form-title {
     font-size: 22px;
     font-weight: 700;
     letter-spacing: 4px;
-    color: hsl(354,82%,70%);
+    color: #6C63FF;
     margin: 8px 0 32px;
 }
 
-/* Inputs */
+/* ✅ CHAMPS */
 .input-group { width: 100%; margin-bottom: 24px; }
 
 .input-wrapper {
@@ -163,11 +169,9 @@ body {
     background: transparent;
 }
 
-.input-wrapper input::placeholder { color: hsl(215,16%,47%); }
-
-/* Button */
+/* ✅ BOUTON VIOLET */
 .login-btn {
-    background: hsl(354,82%,70%);
+    background: #6C63FF;
     color: white;
     border: none;
     border-radius: 9999px;
@@ -176,16 +180,15 @@ body {
     font-weight: 700;
     letter-spacing: 3px;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(235,110,120,0.35);
+    box-shadow: 0 8px 20px rgba(108, 99, 255, 0.40);
     transition: transform .2s;
 }
-
 .login-btn:hover { transform: scale(1.05); }
 
-/* Error */
+/* ✅ MESSAGE ERREUR */
 .error-message {
     color: white;
-    background: rgba(255,0,0,0.7);
+    background: rgba(225, 40, 50, 0.8);
     padding: 12px 20px;
     border-radius: 6px;
     margin-top: 20px;
@@ -194,7 +197,6 @@ body {
 CSS;
 
         $output->setHtmlBodyHeader($css);
-
         $output->importJquery();
         $output->addJavascript("$gvPath/assets/js/animationError.js");
 
@@ -212,9 +214,8 @@ CSS;
         }
 
         return <<<EOS
-    <div class="login-container">
+<div class="login-container">
 
-    <!-- Left Panel -->
     <div class="left-panel">
         <div class="strip-1"></div>
         <div class="strip-2"></div>
@@ -222,13 +223,8 @@ CSS;
         <div class="curve"></div>
     </div>
 
-    <!-- Right Panel -->
     <div class="right-panel">
         <div class="form-area">
-
-            <!-- ✅ LOGO AJOUTÉ ET CORRECTEMENT AFFICHÉ -->
-            <div style="text-align:center; margin-bottom:25px;">
-            </div>
 
             <div class="form-title">SE CONNECTER</div>
 

@@ -36,14 +36,15 @@ class AdminSettings extends Page {
         $generator = new LocalSettingsGenerator($modifiedConfs);
 
         if ($generator->writeFile("$gvDirectory/LocalSettings.php")) {
+
             foreach ($modifiedConfs as $conf) {
                 $conf->exportNewValue();
             }
 
             global $gvPath;
-            $this->message = "Configurazione salvata correttamente.<br>" .
-                             "È possibile tornare al <a href=\"$gvPath/application/adminPage\">menù principale</a>.";
-
+            $this->message = 
+                "Configurazione salvata correttamente.<br>" .
+                "È possibile tornare al <a href=\"$gvPath/application/adminPage\">menù principale</a>.";
             return true;
 
         } else {
@@ -53,70 +54,108 @@ class AdminSettings extends Page {
     }
 
     public function getOutput() {
-        global $gvPath;
 
         $page = new WebPageOutput();
         $page->setHtmlPageTitle("Impostazioni");
 
-        /* ✅ Inject CSS */
-        $page->setHtmlBodyHeader($this->getDesignCSS() . $this->getHeaderAndNav());
-        $page->setHtmlBodyContent($this->getPageContent());
-        $page->setHtmlBodyFooter("");
+        $page->setHtmlBodyHeader($this->getDesignCSS());
+        $page->setHtmlBodyContent($this->getLayout());
 
         return $page;
     }
 
-    /* ✅ Nouveau header + navbar, comme AdminPage */
-    private function getHeaderAndNav() {
+
+    /** ✅ SIDEBAR + LAYOUT COMPLET */
+    private function getLayout() {
         global $gvPath;
 
-        return <<<HTML
-<div class="admin-header">
-    <h2>Pannello amministrazione FastQueue</h2>
-    <span>Gestione del sistema</span>
-</div>
+        $message = $this->message 
+            ? "<div class='message-box'>{$this->message}</div>" 
+            : "";
 
-<div class="admin-navbar">
-    <a class="nav-item" href="$gvPath/application/adminPage">Dashboard</a>
-    <a class="nav-item" href="$gvPath/application/adminOperatorList">Operatori</a>
-    <a class="nav-item" href="$gvPath/application/adminDeskList">Sportelli</a>
-    <a class="nav-item" href="$gvPath/application/adminTopicalDomainList">Aree tematiche</a>
-    <a class="nav-item" href="$gvPath/application/adminDeviceList">Dispositivi</a>
-    <a class="nav-item" href="$gvPath/application/adminStats">Statistiche</a>
-
-    <!-- Onglet actif -->
-    <a class="nav-item active" href="$gvPath/application/adminSettings">Impostazioni</a>
-
-    <a class="nav-item" style="margin-left:auto;" href="$gvPath/application/logoutPage">Logout</a>
-</div>
-HTML;
-    }
-
-    /* ✅ Page Content (formulaire + texte + message) */
-    public function getPageContent() {
-
-        $message = $this->message ? "<div class='message-box'>{$this->message}</div>" : "";
         $form = $this->getForm();
 
         return <<<HTML
-<div class="settings-container">
+<div class="layout">
 
-    
+    <!-- ✅ SIDEBAR VIOLETTE -->
+    <aside class="sidebar">
 
-    $message
-    $form
+        <div class="sidebar-header">
+            <div class="logo-circle">FQ</div>
+            <h3 class="brand">FastQueue Admin</h3>
+        </div>
+
+        <nav class="menu">
+
+            <a class="menu-item" href="$gvPath/application/adminPage">
+                <span>🏠</span> Dashboard
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminOperatorList">
+                <span>👤</span> Operatori
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminDeskList">
+                <span>🖥️</span> Sportelli
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminTopicalDomainList">
+                <span>📂</span> Aree Tematiche
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminDeviceList">
+                <span>📱</span> Dispositivi
+            </a>
+
+            <a class="menu-item" href="$gvPath/application/adminStats">
+                <span>📈</span> Statistiche
+            </a>
+
+            
+        </nav>
+
+       <div class="menu-bottom">
+
+            <a href="$gvPath/application/adminSettings" class="menu-item active">
+                <span>⚙️</span> Impostazioni
+            </a>
+
+            <a href="$gvPath/application/logoutPage" class="menu-item logout">
+                <span>🚪</span> Logout
+            </a>
+
+        </div>
+
+    </aside>
+
+
+    <!-- ✅ CONTENU -->
+    <main class="content">
+
+        <h2 class="page-title">Impostazioni di Sistema</h2>
+
+        $message
+
+        <div class="settings-table-container">
+            $form
+        </div>
+
+    </main>
 
 </div>
 HTML;
     }
 
-    /* ✅ Formulaire stylisé conservant ta logique */
+
+    /** ✅ FORMULAIRE DES PARAMÈTRES (stylé) */
     public function getForm() {
         global $gvEditableConfs;
 
         $fields = "";
 
         foreach ($gvEditableConfs as $conf) {
+
             $tag = $this->generateInputTag($conf);
 
             $fields .= <<<HTML
@@ -141,7 +180,8 @@ HTML;
 HTML;
     }
 
-    /* ✅ Inputs */
+
+    /** ✅ Inputs */
     protected function generateInputTag($conf) {
 
         $tagName = 'input';
@@ -164,93 +204,129 @@ HTML;
 
         if ($tagName == 'input') {
             return "<input name=\"{$conf->getName()}\" value=\"$value\" $attributes />";
-        } else {
+        } 
+        else {
             return "<textarea name=\"{$conf->getName()}\" $attributes>$value</textarea>";
         }
     }
 
-    /* ✅ CSS identique au Admin principal */
+
+    /** ✅ CSS PREMIUM VIOLET */
     private function getDesignCSS() {
         return <<<CSS
 <style>
 
-/* ---- STYLE GLOBAL ---- */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: hsl(210,5%,85%); font-family: 'Segoe UI', Tahoma; }
+body {
+    margin: 0;
+    background: #F0ECFF;
+    font-family: 'Segoe UI', sans-serif;
+}
+.layout {
+    display: flex;
+    height: 100vh;
+}
 
-/* ---- HEADER ---- */
-.admin-header {
-    background: linear-gradient(135deg, hsl(354,82%,70%), hsl(354,62%,78%));
-    padding: 22px 40px;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-.admin-header h2 { font-size: 26px; font-weight: 700; }
-
-/* NAVBAR */
-.admin-navbar {
-    background:white;
-    padding:12px 30px;
-    display:flex;
-    gap:18px;
-    border-bottom:1px solid rgba(0,0,0,0.10);
-}
-.nav-item {
-    padding:8px 18px;
-    border-radius:30px;
-    font-weight:600;
-    color:hsl(354,82%,70%);
-    text-decoration:none;
-    transition:0.3s;
-}
-.nav-item:hover { background:hsl(354,82%,90%); }
-.nav-item.active {
-    background:hsl(354,82%,70%);
+/* ✅ SIDEBAR */
+.sidebar {
+    width:250px;
+    background:linear-gradient(180deg,#6C63FF,#8978FF,#CAB8FF);
     color:white;
+    padding:25px 0;
+    display:flex;
+    flex-direction:column;
+    border-radius:0 25px 25px 0;
+    box-shadow:3px 0 15px rgba(0,0,0,0.08);
 }
-/* ---- CONTENU ---- */
-.settings-container {
-    padding: 40px;
-    background: transparent;
+.sidebar-header { text-align:center; margin-bottom:35px; }
+
+.logo-circle {
+    width:60px;height:60px;
+    background:white;border-radius:50%;
+    margin:0 auto 10px auto;
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:800;color:#6C63FF;
 }
-.section-title { 
-    font-size: 22px; 
-    font-weight: 700; 
-    margin-bottom: 15px;
+.brand { font-size:17px; opacity:.85; }
+
+.menu { display:flex; flex-direction:column; }
+.menu-item {
+    padding:12px 25px;
+    color:white;
+    gap:12px;
+    text-decoration:none;
+    font-size:15px;
+    display:flex;
+    align-items:center;
+    opacity:.85;
+    transition:.25s;
+}
+.menu-item:hover {
+    opacity:1;
+    background:rgba(255,255,255,0.15);
+}
+.menu-item.active {
+    background:rgba(255,255,255,0.25);
+    font-weight:bold;
+}
+.menu-bottom { margin-top:auto; }
+
+/* ✅ CONTENT */
+.content {
+    flex:1;
+    padding:45px;
+    overflow-y:auto;
+}
+.page-title {
+    font-size:28px;
+    margin-bottom:25px;
 }
 
-/* ---- MESSAGE ---- */
+/* ✅ MESSAGE */
 .message-box {
-    background: #fff3cd;
-    padding: 15px 20px;
-    border-left: 4px solid hsl(354,82%,70%);
-    border-radius: 6px;
-    margin-bottom: 20px;
+    padding:15px;
+    background:#E0D9FF;
+    border-left:5px solid #6C63FF;
+    border-radius:8px;
+    margin-bottom:20px;
 }
 
-/* ---- TABLE ---- */
+/* ✅ FORMULAIRE */
+.settings-table-container {
+    background:white;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.08);
+}
 .settings-table {
-    width: 100%;
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    width:100%;
+    border-collapse:collapse;
 }
 .settings-table td {
-    padding: 12px 8px;
+    padding:12px;
+    border-bottom:1px solid #eee;
 }
 
-/* ---- BOUTON ---- */
-.save-btn {
-    padding: 10px 22px;
-    background: hsl(354,82%,70%);
-    color: white;
-    border: none;
-    border-radius: 30px;
-    cursor: pointer;
-    font-weight: 600;
+.settings-table input[type="text"],
+.settings-table input[type="number"],
+.settings-table textarea {
+    width:100%;
+    padding:10px;
+    border-radius:8px;
+    border:1px solid #ccc;
 }
-.save-btn:hover { background: hsl(354,82%,60%); }
+
+.save-btn {
+    background:#6C63FF;
+    color:white;
+    padding:12px 25px;
+    border-radius:30px;
+    border:none;
+    font-weight:600;
+    cursor:pointer;
+}
+.save-btn:hover {
+    background:#5149E8;
+}
 
 </style>
 CSS;

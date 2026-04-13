@@ -34,133 +34,139 @@ class AdminStats extends Page {
         return true;
     }
 
-    /** ✅ Indispensable */
     public function getPageTitle() {
         return "Statistiche";
     }
 
-    /** ✅ Output principal */
     public function getOutput() {
-        global $gvPath;
 
         $page = new WebPageOutput();
-        $page->setHtmlPageTitle($this->getPageTitle());
+        $page->setHtmlPageTitle("Statistiche");
 
-        $page->setHtmlBodyHeader(
-            $this->getDesignCSS() .
-            $this->getHeaderAndNav()
-        );
-
-        $page->setHtmlBodyContent($this->getPageContent());
+        $page->setHtmlBodyHeader($this->getDesignCSS());
+        $page->setHtmlBodyContent($this->getLayout());
 
         return $page;
     }
 
-    /** ✅ Header + navbar */
-    private function getHeaderAndNav() {
+
+    /** ✅ LAYOUT COMPLET avec SIDEBAR VIOLETTE */
+    private function getLayout() {
         global $gvPath;
-
-        return <<<HTML
-<div class="admin-header">
-    <h2>Pannello amministrazione FastQueue</h2>
-    <span>Statistiche del sistema</span>
-</div>
-
-<div class="admin-navbar">
-    <a class="nav-item" href="$gvPath/application/adminPage">Dashboard</a>
-    <a class="nav-item" href="$gvPath/application/adminOperatorList">Operatori</a>
-    <a class="nav-item" href="$gvPath/application/adminDeskList">Sportelli</a>
-    <a class="nav-item " href="$gvPath/application/adminTopicalDomainList">Aree tematiche</a>
-    <a class="nav-item" href="$gvPath/application/adminDeviceList">Dispositivi</a>
-    <a class="nav-item active"  href="$gvPath/application/adminStats">Statistiche</a>
-    <a class="nav-item " href="$gvPath/application/adminSettings">Impostazioni</a>
-    <a class="nav-item" style="margin-left:auto;" href="$gvPath/application/logoutPage">Logout</a>
-</div>
-HTML;
-    }
-
-    /** ✅ Contenu */
-    public function getPageContent() {
 
         $timeSpan = $this->getTimeSpanString();
 
         return <<<HTML
-<div class="content-wrapper">
+<div class="layout">
 
-    <h3 class="section-title">Imposta il periodo di ricerca</h3>
+    <!-- ✅ SIDEBAR VIOLETTE -->
+    <aside class="sidebar">
 
-    {$this->getForm()}
+        <div class="sidebar-header">
+            <div class="logo-circle">FQ</div>
+            <h3 class="brand">FastQueue Admin</h3>
+        </div>
 
-    <h3 class="section-title">Statistiche per il periodo: <span class="highlight">$timeSpan</span></h3>
+        <nav class="menu">
 
-    <div class="stats-block">
-        {$this->getTdStatsTable()}
-    </div>
+            <a class="menu-item" href="$gvPath/application/adminPage"><span>🏠</span> Dashboard</a>
+            <a class="menu-item" href="$gvPath/application/adminOperatorList"><span>👤</span> Operatori</a>
+            <a class="menu-item" href="$gvPath/application/adminDeskList"><span>🖥️</span> Sportelli</a>
+            <a class="menu-item" href="$gvPath/application/adminTopicalDomainList"><span>📂</span> Aree Tematiche</a>
+            <a class="menu-item" href="$gvPath/application/adminDeviceList"><span>📱</span> Dispositivi</a>
+            <a class="menu-item active" href="$gvPath/application/adminStats"><span>📈</span> Statistiche</a>
 
-    <div class="stats-block">
-        {$this->getSourceStatsTable()}
-    </div>
+        </nav>
 
-    <h3 class="section-title">Statistiche per operatore</h3>
+        <!-- ✅ BAS -->
+        <div class="menu-bottom">
+            <a class="menu-item" href="$gvPath/application/adminSettings"><span>⚙️</span> Impostazioni</a>
+            <a class="menu-item" href="$gvPath/application/logoutPage"><span>🚪</span> Logout</a>
+        </div>
 
-    <div class="stats-block">
-        {$this->getStatsOperatorTables()}
-    </div>
+    </aside>
+
+
+    <!-- ✅ CONTENU PRINCIPAL -->
+    <main class="content">
+
+        <h2 class="page-title">Statistiche del Sistema</h2>
+
+        <h3 class="section-title">Imposta il periodo</h3>
+
+        {$this->getForm()}
+
+        <h3 class="section-title">Statistiche periodo: <span class="highlight">$timeSpan</span></h3>
+
+        <div class="stats-block">
+            {$this->getTdStatsTable()}
+        </div>
+
+        <div class="stats-block">
+            {$this->getSourceStatsTable()}
+        </div>
+
+        <h3 class="section-title">Statistiche per operatore</h3>
+
+        <div class="stats-block">
+            {$this->getStatsOperatorTables()}
+        </div>
+
+    </main>
 
 </div>
 HTML;
     }
 
-    /** ✅ Intervalle */
+
+
+    /** ✅ TEXT PERIOD */
     private function getTimeSpanString() {
-        if ($this->dateFrom == self::$MIN_DATE && $this->dateTo == self::$MAX_DATE) {
+        if ($this->dateFrom == self::$MIN_DATE && $this->dateTo == self::$MAX_DATE)
             return "completo";
-        }
 
         global $gvTimeZone;
-
         $zone = new DateTimeZone($gvTimeZone);
 
-        $from = new DateTime('@'.$this->dateFrom);
-        $from->setTimezone($zone);
-        $from = $from->format('d-m-Y');
-
-        $to = new DateTime('@'.$this->dateTo);
-        $to->setTimezone($zone);
-        $to = $to->format('d-m-Y');
+        $from = new DateTime('@'.$this->dateFrom); $from->setTimezone($zone); $from = $from->format('d-m-Y');
+        $to   = new DateTime('@'.$this->dateTo);   $to->setTimezone($zone);   $to   = $to->format('d-m-Y');
 
         return "dal $from al $to";
     }
 
-    /** ✅ Stat Aree tematiche */
+
+
+    /** ✅ TABLE TD */
     public function getTdStatsTable() {
+
         $rows = $this->getTdStatsRows();
 
         return <<<HTML
-<table class="styled-table w100">
+<table class="styled-table">
     <caption>Statistiche per area tematica</caption>
     <tr>
-        <th>Area tematica</th>
-        <th>Numero ticket</th>
+        <th>Area</th>
+        <th>Ticket</th>
         <th>Attesa media</th>
-        <th>Tempo d'esecuzione medio</th>
+        <th>Esecuzione media</th>
     </tr>
     $rows
 </table>
 HTML;
     }
 
+
+
     private function getTdStatsRows() {
 
         $rows = "";
-        $tdList = TopicalDomain::fromDatabaseCompleteList(false);
+        $list = TopicalDomain::fromDatabaseCompleteList(false);
 
-        foreach ($tdList as $td) {
+        foreach ($list as $td) {
 
             $tickets = TicketStats::fromDatabaseListByCode(
                 $td->getCode(),
-                $this->dateFrom,
-                $this->dateTo
+                $this->dateFrom, $this->dateTo
             );
 
             $wait = 0;
@@ -168,7 +174,6 @@ HTML;
             $count = 0;
 
             foreach ($tickets as $t) {
-
                 if (!$t->getTimeExec()) continue;
 
                 $wait += ($t->getTimeExec() - $t->getTimeIn());
@@ -181,7 +186,7 @@ HTML;
 
             $rows .= <<<HTML
 <tr>
-    <td>{$td->getCode()}</td>
+    <td>{$td->getName()}</td>
     <td>$count</td>
     <td>{$avgWait} min</td>
     <td>{$avgExec} min</td>
@@ -192,7 +197,43 @@ HTML;
         return $rows ?: '<tr><td colspan="4">Nessuna statistica</td></tr>';
     }
 
-    /** ✅ Stat per operatore */
+
+
+    /** ✅ SOURCE TABLE */
+    public function getSourceStatsTable() {
+
+        $sources = ['app','totem','web'];
+        $count = [];
+        $total = 0;
+
+        foreach ($sources as $src) {
+            $arr = TicketStats::fromDatabaseListBySource($src, $this->dateFrom, $this->dateTo);
+            $count[$src] = count($arr);
+            $total += $count[$src];
+        }
+
+        $pApp   = $total ? (int)(($count['app']   / $total) * 100) : 0;
+        $pTotem = $total ? (int)(($count['totem'] / $total) * 100) : 0;
+        $pWeb   = $total ? (int)(($count['web']   / $total) * 100) : 0;
+
+        return <<<HTML
+<table class="styled-table">
+    <caption>Statistiche per sorgente</caption>
+    <tr>
+        <th>Fonte</th>
+        <th>Totale</th>
+        <th>%</th>
+    </tr>
+    <tr><td>App</td><td>{$count['app']}</td><td>{$pApp}%</td></tr>
+    <tr><td>Totem</td><td>{$count['totem']}</td><td>{$pTotem}%</td></tr>
+    <tr><td>Web</td><td>{$count['web']}</td><td>{$pWeb}%</td></tr>
+</table>
+HTML;
+    }
+
+
+
+    /** ✅ OPERATOR TABLES */
     public function getStatsOperatorTables() {
 
         $ops = Operator::fromDatabaseCompleteList();
@@ -203,12 +244,12 @@ HTML;
             $rows = $this->getRowsForOperator($op);
 
             $html .= <<<HTML
-<table class="styled-table w100">
+<table class="styled-table">
     <caption>{$op->getFullName()} ({$op->getCode()})</caption>
     <tr>
-        <th>Area tematica</th>
-        <th>Ticket serviti</th>
-        <th>Percentuale</th>
+        <th>Area</th>
+        <th>Ticket</th>
+        <th>%</th>
         <th>Tempo medio</th>
     </tr>
     $rows
@@ -219,36 +260,31 @@ HTML;
         return $html ?: "<p>Nessuna statistica disponibile</p>";
     }
 
-    /** ✅ Rows per operatore */
+
+
     public function getRowsForOperator($op) {
 
         $stats = [];
         $tickets = TicketStats::fromDatabaseListByOperator(
-            $op->getCode(),
-            $this->dateFrom,
-            $this->dateTo
+            $op->getCode(), $this->dateFrom, $this->dateTo
         );
 
         $total = count($tickets);
         $execSum = 0;
 
         foreach ($tickets as $t) {
-
             $code = $t->getCode();
+            if (!isset($stats[$code]))
+                $stats[$code] = ['count'=>0,'exec'=>0];
 
-            if (!isset($stats[$code])) {
-                $stats[$code] = ['count' => 0, 'exec' => 0];
-            }
-
-            $e = $t->getTimeOut() - $t->getTimeExec();
-
+            $exec = $t->getTimeOut() - $t->getTimeExec();
             $stats[$code]['count']++;
-            $stats[$code]['exec'] += $e;
-            $execSum += $e;
+            $stats[$code]['exec'] += $exec;
+            $execSum += $exec;
         }
 
         if (!$total)
-            return "<tr><td colspan='4'>Nessuna statistica</td></tr>";
+            return "<tr><td colspan='4'>Nessun dato</td></tr>";
 
         ksort($stats);
 
@@ -263,7 +299,7 @@ HTML;
 <tr>
     <td>$code</td>
     <td>{$s['count']}</td>
-    <td>{$perc} %</td>
+    <td>{$perc}%</td>
     <td>{$avg} min</td>
 </tr>
 HTML;
@@ -275,7 +311,7 @@ HTML;
 <tr>
     <td><b>TOTALE</b></td>
     <td><b>$total</b></td>
-    <td><b>100 %</b></td>
+    <td><b>100%</b></td>
     <td><b>{$avgTotal} min</b></td>
 </tr>
 HTML;
@@ -283,49 +319,9 @@ HTML;
         return $rows;
     }
 
-    /** ✅ ✅ ✅ FONCTION MANQUANTE — CAUSE DE TON ERREUR */
-    public function getSourceStatsTable() {
 
-        $src = ['app','totem','web'];
-        $count = [];
-        $total = 0;
 
-        foreach ($src as $s) {
-            $tickets = TicketStats::fromDatabaseListBySource(
-                $s,
-                $this->dateFrom,
-                $this->dateTo
-            );
-            $count[$s] = count($tickets);
-            $total += $count[$s];
-        }
-
-        $appP   = $total ? (int)(($count['app']   / $total) * 100) : 0;
-        $totemP = $total ? (int)(($count['totem'] / $total) * 100) : 0;
-        $webP   = $total ? (int)(($count['web']   / $total) * 100) : 0;
-
-        return <<<HTML
-<table class="styled-table w100">
-    <caption>Statistiche per sorgente</caption>
-    <tr>
-        <th>Fonte</th>
-        <th>Conteggio</th>
-        <th>Percentuale</th>
-    </tr>
-    <tr>
-        <td>App</td><td>{$count['app']}</td><td>{$appP}%</td>
-    </tr>
-    <tr>
-        <td>Totem</td><td>{$count['totem']}</td><td>{$totemP}%</td>
-    </tr>
-    <tr>
-        <td>Web</td><td>{$count['web']}</td><td>{$webP}%</td>
-    </tr>
-</table>
-HTML;
-    }
-
-    /** ✅ Formulaire */
+    /** ✅ FORMULAIRE */
     public function getForm() {
 
         return <<<HTML
@@ -346,66 +342,87 @@ HTML;
 HTML;
     }
 
-    /** ✅ CSS */
+
+
+    /** ✅ CSS VIOLET PREMIUM */
     private function getDesignCSS() {
         return <<<CSS
 <style>
 
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:hsl(210,5%,85%);font-family:'Segoe UI',Tahoma;}
+/* GLOBAL */
+body { margin:0; background:#F0ECFF; font-family:'Segoe UI',sans-serif; }
+.layout { display:flex; height:100vh; }
 
-.admin-header{
-    background:linear-gradient(135deg,hsl(354,82%,70%),hsl(354,62%,78%));
-    padding:22px 40px;color:#fff;
-    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+/* ✅ SIDEBAR */
+.sidebar {
+    width:250px;
+    background:linear-gradient(180deg,#6C63FF,#8978FF,#CAB8FF);
+    color:white;
+    padding:25px 0;
+    display:flex;
+    flex-direction:column;
+    border-radius:0 25px 25px 0;
+    box-shadow:3px 0 15px rgba(0,0,0,0.08);
 }
-
-.admin-navbar{
-    background:#fff;padding:12px 30px;
-    display:flex;gap:18px;border-bottom:1px solid rgba(0,0,0,0.10);
+.logo-circle {
+    width:60px;height:60px;background:white;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 10px auto;color:#6C63FF;font-weight:800;font-size:26px;
 }
+.sidebar-header { text-align:center;margin-bottom:35px; }
+.brand { opacity:.85;font-size:17px; }
 
-.nav-item{
-    padding:8px 18px;border-radius:30px;
-    color:hsl(354,82%,70%);font-weight:600;
-    text-decoration:none;transition:.3s;
+/* ✅ MENU */
+.menu { display:flex;flex-direction:column; }
+.menu-item {
+    padding:12px 25px;color:white;text-decoration:none;
+    display:flex;gap:12px;align-items:center;
+    font-size:15px;transition:0.25s;opacity:.85;
 }
-.nav-item:hover{background:hsl(354,82%,90%);}
-.nav-item.active{background:hsl(354,82%,70%);color:#fff;}
+.menu-item:hover { opacity:1;background:rgba(255,255,255,0.15); }
+.menu-item.active { background:rgba(255,255,255,0.25);font-weight:bold; }
 
-.content-wrapper{padding:40px;}
-.section-title{font-size:22px;font-weight:700;margin-bottom:18px;}
-.highlight{color:hsl(354,82%,60%);font-weight:bold;}
+/* ✅ MENU BAS */
+.menu-bottom { margin-top:auto;display:flex;flex-direction:column; }
 
-.styled-table{
-    width:100%;background:#fff;border-collapse:collapse;
-    border-radius:16px;overflow:hidden;
+/* ✅ CONTENU */
+.content { flex:1;padding:45px;overflow-y:auto; }
+.page-title { font-size:28px;margin-bottom:25px; }
+
+/* ✅ TABLES */
+.styled-table {
+    width:100%;border-collapse:collapse;
+    background:white;padding:10px;border-radius:15px;
     box-shadow:0 4px 18px rgba(0,0,0,0.08);
-    margin-bottom:30px;
 }
-.styled-table th{
-    background:hsl(354,82%,70%);
-    color:#fff;padding:12px;text-align:left;
+.styled-table th {
+    background:#6C63FF;color:white;padding:12px;border-radius:6px;
 }
-.styled-table td{
+.styled-table td {
     padding:12px;border-bottom:1px solid #eee;
 }
-.styled-table tr:hover{background:hsl(354,82%,95%);}
-
-.stats-form input[type=text]{
-    padding:8px;width:100%;
+.styled-table tr:hover {
+    background:#F3EEFF;
 }
 
-.btn-primary{
-    padding:10px 22px;border-radius:30px;
-    border:none;background:hsl(354,82%,70%);
-    color:#fff;font-weight:600;cursor:pointer;
-}
-.btn-primary:hover{background:hsl(354,82%,60%);}
+.caption { font-weight:bold;margin-bottom:10px; }
 
-.stats-block{margin-bottom:40px;}
+/* ✅ STAT BLOCK */
+.stats-block {
+    margin-top:30px;
+}
+
+/* ✅ FORM */
+.btn-primary {
+    background:#6C63FF;color:white;padding:10px 22px;
+    border-radius:30px;font-weight:600;border:none;
+}
+.btn-primary:hover { background:#5149E8; }
+
+.highlight { color:#6C63FF;font-weight:bold; }
 
 </style>
 CSS;
     }
+
 }

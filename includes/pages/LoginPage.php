@@ -20,8 +20,8 @@ class LoginPage extends Page {
     public function execute() {
         global $gvPath;
         
-        $code = $_POST['code'];
-        $password = $_POST['password'];
+        $code = $_POST['code'] ?? '';
+        $password = $_POST['password'] ?? '';
 
         session_destroy();
         unset($_SESSION);
@@ -62,7 +62,7 @@ class LoginPage extends Page {
             return new RedirectOutput($gvPath . "/application/opPage");
         }
         
-        $this->errorMessage = "Codice o password non validi!";
+        $this->errorMessage = "Code ou mot de passe invalide !";
         return true;
     }
 
@@ -70,9 +70,8 @@ class LoginPage extends Page {
         global $gvPath;
 
         $output = new WebPageOutput();
-        $output->setHtmlPageTitle("Pagina di log in");
+        $output->setHtmlPageTitle("Connexion - FastQueue");
 
-        /* ✅ CSS violet premium */
         $css = <<<CSS
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -81,10 +80,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-
-    /* ✅ Couleur du menu violet premium */
-    background: linear-gradient(135deg, #d6d6e0, #dedcee, #CAB8FF);
-
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     padding: 20px;
 }
@@ -98,12 +94,12 @@ body {
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
 }
 
-/* ✅ PANEL GAUCHE (theme violet premium) */
+/* PANEL GAUCHE */
 .left-panel {
     position: relative;
     width: 40%;
     min-height: 500px;
-    background: linear-gradient(135deg, #6C63FF, #8978FF, #CAB8FF);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     overflow: hidden;
 }
 
@@ -115,9 +111,9 @@ body {
     transform: rotate(-20deg);
 }
 
-.left-panel .strip-1 { left: -20%; top: 10%; width: 80%; background: #7B72FF; }
-.left-panel .strip-2 { left: -10%; top: 15%; width: 60%; background: #968BFF; }
-.left-panel .strip-3 { left: 5%;   top: 20%; width: 50%; background: #D8CBFF; }
+.left-panel .strip-1 { left: -20%; top: 10%; width: 80%; background: rgba(108, 99, 255, 0.15); }
+.left-panel .strip-2 { left: -10%; top: 15%; width: 60%; background: rgba(108, 99, 255, 0.1); }
+.left-panel .strip-3 { left: 5%;   top: 20%; width: 50%; background: rgba(108, 99, 255, 0.05); }
 
 .left-panel .curve {
     position: absolute; right: -40px; top: 30%;
@@ -125,7 +121,7 @@ body {
     background: white; border-radius: 9999px 0 0 9999px;
 }
 
-/* ✅ PANEL DROIT */
+/* PANEL DROIT */
 .right-panel {
     width: 60%;
     background: #fff;
@@ -142,56 +138,182 @@ body {
     padding: 40px 48px;
 }
 
-/* ✅ TITRE */
+/* TITRE */
 .form-title {
-    font-size: 22px;
+    font-size: 28px;
     font-weight: 700;
-    letter-spacing: 4px;
-    color: #6C63FF;
-    margin: 8px 0 32px;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 40px;
+    text-align: center;
 }
 
-/* ✅ CHAMPS */
-.input-group { width: 100%; margin-bottom: 24px; }
+/* CHAMPS AVEC ICONES */
+.input-group { 
+    width: 100%; 
+    margin-bottom: 24px; 
+}
 
 .input-wrapper {
     display: flex;
     align-items: center;
     gap: 12px;
-    border-bottom: 1px solid hsl(0,0%,85%);
-    padding-bottom: 12px;
+    background: #f5f7fb;
+    border-radius: 12px;
+    padding: 0 15px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.input-wrapper:focus-within {
+    border-color: #6C63FF;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+}
+
+.input-icon {
+    color: #999;
+    font-size: 16px;
+    transition: color 0.3s ease;
+}
+
+.input-wrapper:focus-within .input-icon {
+    color: #6C63FF;
 }
 
 .input-wrapper input {
-    width: 100%; border: none; outline: none;
+    width: 100%;
+    padding: 14px 0;
+    border: none;
+    outline: none;
     font-size: 14px;
-    color: hsl(220,10%,30%);
+    color: #1a1a2e;
     background: transparent;
+    font-family: inherit;
 }
 
-/* ✅ BOUTON VIOLET */
+.input-wrapper input::placeholder {
+    color: #bbb;
+}
+
+/* Bouton toggle password */
+.password-toggle {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    transition: color 0.3s ease;
+}
+
+.password-toggle:hover {
+    color: #6C63FF;
+}
+
+/* BOUTON LOGIN */
 .login-btn {
-    background: #6C63FF;
+    background: linear-gradient(135deg, #6C63FF, #8B82FF);
     color: white;
     border: none;
-    border-radius: 9999px;
+    border-radius: 12px;
     padding: 14px 40px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 3px;
+    font-size: 15px;
+    font-weight: 600;
     cursor: pointer;
     box-shadow: 0 8px 20px rgba(108, 99, 255, 0.40);
-    transition: transform .2s;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
-.login-btn:hover { transform: scale(1.05); }
 
-/* ✅ MESSAGE ERREUR */
+.login-btn:hover { 
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(108, 99, 255, 0.5);
+    gap: 12px;
+}
+
+/* MESSAGE ERREUR */
 .error-message {
-    color: white;
-    background: rgba(225, 40, 50, 0.8);
-    padding: 12px 20px;
-    border-radius: 6px;
+    background: #fee2e2;
+    border-left: 3px solid #ef4444;
+    padding: 12px 15px;
+    border-radius: 10px;
     margin-top: 20px;
+    width: 100%;
+}
+.error-message p {
+    color: #991b1b;
+    font-size: 13px;
+    margin: 0;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .login-container {
+        flex-direction: column;
+    }
+    
+    .left-panel {
+        width: 100%;
+        min-height: 200px;
+    }
+    
+    .right-panel {
+        width: 100%;
+    }
+    
+    .form-area {
+        padding: 30px 25px;
+    }
+    
+    .form-title {
+        font-size: 24px;
+        margin-bottom: 30px;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-area {
+        padding: 25px 20px;
+    }
+    
+    .form-title {
+        font-size: 22px;
+        margin-bottom: 25px;
+    }
+    
+    .input-wrapper {
+        padding: 0 12px;
+    }
+    
+    .input-wrapper input {
+        padding: 12px 0;
+        font-size: 13px;
+    }
+    
+    .login-btn {
+        padding: 12px;
+        font-size: 14px;
+    }
+}
+
+/* Animation erreur */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+.error-message {
+    animation: shake 0.3s ease-in-out;
 }
 </style>
 CSS;
@@ -210,7 +332,7 @@ CSS;
 
         $message = "";
         if ($this->errorMessage) {
-            $message = "<div class=\"error-message\"><p>$this->errorMessage</p></div>";
+            $message = "<div class=\"error-message\"><p>{$this->errorMessage}</p></div>";
         }
 
         return <<<EOS
@@ -226,23 +348,31 @@ CSS;
     <div class="right-panel">
         <div class="form-area">
 
-            <div class="form-title">SE CONNECTER</div>
+            <div class="form-title">CONNEXION</div>
 
             <form action="$gvPath/application/loginPage" method="post" autocomplete="off">
 
                 <div class="input-group">
                     <div class="input-wrapper">
-                        <input type="text" name="code" placeholder="Code">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" name="code" id="code" placeholder="Identifiant" required>
                     </div>
                 </div>
 
                 <div class="input-group">
                     <div class="input-wrapper">
-                        <input type="password" name="password" placeholder="Mot de passe">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" name="password" id="password" placeholder="Mot de passe" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
                 </div>
 
-                <input class="login-btn" type="submit" value="Se connecter">
+                <button type="submit" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Connexion</span>
+                </button>
 
             </form>
 
@@ -252,6 +382,26 @@ CSS;
     </div>
 
 </div>
+
+<script>
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleBtn = document.querySelector('.password-toggle i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleBtn.classList.remove('fa-eye');
+        toggleBtn.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleBtn.classList.remove('fa-eye-slash');
+        toggleBtn.classList.add('fa-eye');
+    }
+}
+</script>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 EOS;
     }
 
@@ -266,3 +416,4 @@ EOS;
         }
     }
 }
+?>

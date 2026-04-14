@@ -22,106 +22,149 @@ class AdminDeviceList extends Page {
     }
 
 
-    /** ✅ LAYOUT COMPLET AVEC SIDEBAR PREMIUM + ICONES */
+    /** ✅ LAYOUT PRINCIPAL */
     private function getLayout() {
-
         global $gvPath;
         $table = $this->getTableBody();
 
         return <<<HTML
 <div class="layout">
-
-    <!-- ✅ SIDEBAR VIOLETTE -->
-    <aside class="sidebar">
-
+    <!-- Sidebar Toggle pour mobile -->
+    <button class="mobile-toggle" id="mobileToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="logo-circle">FQ</div>
-            <h3 class="brand">FastQueue Admin</h3>
+            <div class="logo">
+                <h2>FastQueue</h2>
+            </div>
+            <span class="admin-badge">Administrateur</span>
         </div>
 
-        <nav class="menu">
-
-            <a class="menu-item" href="$gvPath/application/adminPage">
-                <i class="fa-solid fa-house"></i> Dashboard
+        <nav class="sidebar-nav">
+            <a href="$gvPath/application/adminPage" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Tableau de bord</span>
             </a>
-
-            <a class="menu-item" href="$gvPath/application/adminOperatorList">
-                <i class="fa-solid fa-user-gear"></i> Operatori
+            <a href="$gvPath/application/adminOperatorList" class="nav-item">
+                <i class="fas fa-users"></i>
+                <span>Opérateurs</span>
             </a>
-
-            <a class="menu-item" href="$gvPath/application/adminDeskList">
-                <i class="fa-solid fa-desktop"></i> Sportelli
+            <a href="$gvPath/application/adminDeskList" class="nav-item">
+                <i class="fas fa-desktop"></i>
+                <span>Compteurs</span>
             </a>
-
-            <a class="menu-item" href="$gvPath/application/adminTopicalDomainList">
-                <i class="fa-solid fa-folder-tree"></i> Aree Tematiche
+            <a href="$gvPath/application/adminTopicalDomainList" class="nav-item">
+                <i class="fas fa-folder-tree"></i>
+                <span>Domaines thématiques</span>
             </a>
-
-            <a class="menu-item active" href="$gvPath/application/adminDeviceList">
-                <i class="fa-solid fa-display"></i> Dispositivi
+            <a href="$gvPath/application/adminDeviceList" class="nav-item active">
+                <i class="fas fa-mobile-alt"></i>
+                <span>Appareils</span>
             </a>
-
-            <a class="menu-item" href="$gvPath/application/adminStats">
-                <i class="fa-solid fa-chart-line"></i> Statistiche
+            <a href="$gvPath/application/adminStats" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Statistiques</span>
             </a>
-
+            <a href="$gvPath/application/adminSettings" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Paramètres</span>
+            </a>
         </nav>
 
-        <!-- ✅ BAS DE SIDEBAR -->
-        <div class="menu-bottom">
-
-            <a class="menu-item" href="$gvPath/application/adminSettings">
-                <i class="fa-solid fa-gear"></i> Impostazioni
+        <div class="sidebar-footer">
+            <a href="$gvPath/application/logoutPage" class="nav-item logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Déconnexion</span>
             </a>
-
-            <a class="menu-item logout" href="$gvPath/application/logoutPage">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
-            </a>
-
         </div>
-
     </aside>
 
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            <div class="page-header">
+                <h1>Gestion des appareils</h1>
+                <p class="subtitle">Gérez les appareils affichage de votre système</p>
+            </div>
 
-    <!-- ✅ CONTENU PRINCIPAL -->
-    <main class="content">
+            <!-- Table des appareils -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-mobile-alt"></i>
+                    <h3>Liste des appareils</h3>
+                </div>
+                <div class="table-container">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Adresse IP</th>
+                                <th>Fonction</th>
+                                <th>Domaines thématiques</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            $table
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-        <h2 class="page-title">Gestione Dispositivi</h2>
-
-        <div class="table-container">
-            <table class="styled-table">
-                <tr>
-                    <th>Indirizzo IP</th>
-                    <th>Funzione</th>
-                    <th>Aree tematiche</th>
-                    <th>Azioni</th>
-                </tr>
-
-                $table
-            </table>
+            <!-- Bouton Ajouter -->
+            <div class="actions-section">
+                <a href="$gvPath/application/adminDeviceEdit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Ajouter un appareil
+                </a>
+            </div>
         </div>
-
-        <div class="actions">
-            <a class="btn-add" href="$gvPath/application/adminDeviceEdit">
-                <i class="fa-solid fa-plus"></i> Aggiungi dispositivo
-            </a>
-        </div>
-
     </main>
-
 </div>
+
+<!-- Overlay pour mobile -->
+<div class="overlay" id="overlay"></div>
+
+<script>
+const mobileToggle = document.getElementById('mobileToggle');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+
+if (mobileToggle) {
+    mobileToggle.addEventListener('click', () => {
+        sidebar.classList.add('open');
+        overlay.classList.add('show');
+    });
+}
+
+if (overlay) {
+    overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+    });
+}
+
+// Fermer sidebar sur resize si écran large
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+    }
+});
+</script>
 HTML;
     }
 
 
-    /** ✅ TABLE BODY AVEC ICONES PRO */
+    /** ✅ TABLE BODY */
     private function getTableBody() {
         global $gvPath;
 
         $devices = Device::fromDatabaseCompleteList();
 
         if (!count($devices)) {
-            return '<tr><td colspan="4" style="text-align:center;color:#777;padding:20px;">Nessun dispositivo</td></tr>';
+            return '<tr><td colspan="4" class="empty-row">Aucun appareil disponible</td></tr>';
         }
 
         $html = "";
@@ -132,11 +175,11 @@ HTML;
             $ip  = $dev->getIpAddress();
 
             if ($dev->getDeskNumber()) {
-                $role = "Display sportello " . $dev->getDeskNumber();
+                $role = "Affichage compteur " . $dev->getDeskNumber();
                 $tdTxt = "-";
             } else {
-                $role  = "Display di sala";
-                $tdTxt = $dev->getTdCode() ? $dev->getTdCode() : "Tutte";
+                $role  = "Affichage salle";
+                $tdTxt = $dev->getTdCode() ? $dev->getTdCode() : "Tous";
             }
 
             $html .= <<<HTML
@@ -144,16 +187,13 @@ HTML;
     <td>$ip</td>
     <td>$role</td>
     <td>$tdTxt</td>
-    <td class="actions-col">
-
-        <a href="$gvPath/application/adminDeviceEdit?dev_id=$id" class="icon-btn edit">
-            <i class="fa-solid fa-pen-to-square"></i>
+    <td class="actions-cell">
+        <a href="$gvPath/application/adminDeviceEdit?dev_id=$id" class="action-btn edit" title="Modifier">
+            <i class="fas fa-edit"></i>
         </a>
-
-        <a href="$gvPath/ajax/removeRecord?dev_id=$id" class="icon-btn delete">
-            <i class="fa-solid fa-trash"></i>
+        <a href="$gvPath/ajax/removeRecord?dev_id=$id" class="action-btn delete" title="Supprimer">
+            <i class="fas fa-trash"></i>
         </a>
-
     </td>
 </tr>
 HTML;
@@ -165,155 +205,383 @@ HTML;
 
 
     public function getPageTitle() {
-        return "Gestione dispositivi";
+        return "Gestion des appareils";
     }
 
 
 
-    /** ✅ CSS PREMIUM COMPLET (ICÔNES + VIOLET) */
+    /** ✅ CSS COMPLET */
     private function getDesignCSS() {
         return <<<CSS
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f7fb;
+            color: #1a1a2e;
+            overflow-x: hidden;
+        }
 
-/* GLOBAL */
-body {
-    margin: 0;
-    background: #F0ECFF;
-    font-family: 'Segoe UI', sans-serif;
-}
-.layout {
-    display: flex;
-    height: 100vh;
-}
+        /* Layout */
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
 
-/* ✅ SIDEBAR */
-.sidebar {
-    width: 250px;
-    background: linear-gradient(180deg,#6C63FF,#8978FF,#CAB8FF);
-    color:white;
-    padding:25px 0;
-    display:flex;
-    flex-direction:column;
-    border-radius:0 25px 25px 0;
-    box-shadow:3px 0 15px rgba(0,0,0,0.08);
-}
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
 
-.logo-circle {
-    width:60px;height:60px;background:white;
-    border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    color:#6C63FF;
-    font-size:26px;font-weight:800;
-    margin:0 auto 10px auto;
-}
+        .sidebar-header {
+            padding: 30px 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
 
-.sidebar-header {
-    text-align:center;
-    margin-bottom:35px;
-}
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
 
-.menu {
-    display:flex;
-    flex-direction:column;
-}
+        .logo i {
+            font-size: 28px;
+            color: #6C63FF;
+        }
 
-.menu-item {
-    padding:12px 25px;
-    display:flex;
-    align-items:center;
-    gap:12px;
-    color:white;
-    text-decoration:none;
-    opacity:.85;
-    transition:.25s;
-}
-.menu-item:hover { opacity:1; background:rgba(255,255,255,0.15); }
-.menu-item.active { background:rgba(255,255,255,0.25); font-weight:bold; }
+        .logo h2 {
+            font-size: 22px;
+            font-weight: 700;
+        }
 
-.menu-bottom { margin-top:auto; }
+        .admin-badge {
+            background: rgba(108, 99, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #6C63FF;
+            display: inline-block;
+        }
 
-/* ✅ CONTENT */
-.content {
-    flex:1;
-    padding:45px;
-    overflow-y:auto;
-}
-.page-title {
-    font-size:28px;
-    margin-bottom:25px;
-}
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 0;
+        }
 
-/* ✅ TABLE */
-.table-container {
-    background:white;
-    padding:22px;
-    border-radius:15px;
-    box-shadow:0 4px 18px rgba(0,0,0,0.08);
-}
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 25px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
 
-.styled-table {
-    width:100%;
-    border-collapse:collapse;
-}
-.styled-table th {
-    background:#6C63FF;
-    padding:12px;
-    color:white;
-    border-radius:6px;
-    text-align:left;
-}
-.styled-table td {
-    padding:12px;
-    border-bottom:1px solid #eee;
-}
-.styled-table tr:hover {
-    background:#F3EEFF;
-}
+        .nav-item i {
+            width: 20px;
+            font-size: 18px;
+        }
 
-/* ✅ ICONES ACTIONS */
-.actions-col {
-    display:flex;
-    gap:12px;
-}
+        .nav-item:hover {
+            background: rgba(108, 99, 255, 0.1);
+            color: #fff;
+        }
 
-.icon-btn {
-    width:38px;height:38px;
-    display:flex;justify-content:center;align-items:center;
-    border-radius:10px;
-    color:white;
-    text-decoration:none;
-    font-size:18px;
-}
+        .nav-item.active {
+            background: linear-gradient(90deg, #6C63FF, rgba(108, 99, 255, 0.1));
+            color: #fff;
+            border-right: 3px solid #6C63FF;
+        }
 
-/* Modifier */
-.icon-btn.edit { background:#6C63FF; }
-.icon-btn.edit:hover { background:#5149E8; }
+        .sidebar-footer {
+            padding: 20px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
 
-/* Supprimer */
-.icon-btn.delete { background:#D94141; }
-.icon-btn.delete:hover { background:#B02D2D; }
+        .logout {
+            color: #ff6b6b;
+        }
 
-/* ✅ BOUTON AJOUTER */
-.btn-add {
-    display:inline-flex;
-    align-items:center;
-    gap:10px;
-    background:#6C63FF;
-    color:white;
-    padding:12px 25px;
-    border-radius:30px;
-    font-weight:600;
-    text-decoration:none;
-    margin-top:25px;
-    font-size:15px;
-}
-.btn-add:hover {
-    background:#5149E8;
-}
+        .logout:hover {
+            background: rgba(255, 107, 107, 0.1);
+        }
 
-</style>
+        /* Mobile Toggle */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: #6C63FF;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Overlay */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            min-height: 100vh;
+            background: #f5f7fb;
+        }
+
+        .content-wrapper {
+            padding: 30px 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .card-header i {
+            color: #6C63FF;
+            font-size: 20px;
+        }
+
+        .card-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin: 0;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .stats-table thead {
+            background: #f8f9fa;
+        }
+
+        .stats-table th {
+            padding: 12px 15px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a2e;
+            border-bottom: 2px solid #eee;
+        }
+
+        .stats-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+
+        .stats-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .empty-row {
+            text-align: center;
+            color: #999;
+            padding: 20px !important;
+        }
+
+        /* Actions */
+        .actions-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn.edit {
+            background: #6C63FF;
+            color: white;
+        }
+
+        .action-btn.edit:hover {
+            background: #5149E8;
+            transform: scale(1.05);
+        }
+
+        .action-btn.delete {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .action-btn.delete:hover {
+            background: #ee5a52;
+            transform: scale(1.05);
+        }
+
+        /* Buttons */
+        .actions-section {
+            margin-top: 25px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #6C63FF;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5149E8;
+        }
+
+        .btn-secondary {
+            background: #e9ecef;
+            color: #1a1a2e;
+        }
+
+        .btn-secondary:hover {
+            background: #dee2e6;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .mobile-toggle {
+                display: flex;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .content-wrapper {
+                padding: 20px;
+            }
+
+            .page-header h1 {
+                font-size: 22px;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            .stats-table th,
+            .stats-table td {
+                padding: 10px;
+                font-size: 12px;
+            }
+        }
+
+    </style>
+</head>
+</html>
 CSS;
     }
 }

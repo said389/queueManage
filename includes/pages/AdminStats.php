@@ -116,7 +116,8 @@ class AdminStats extends Page {
     <main class="main-content">
         <div class="content-wrapper">
             <div class="page-header">
-                <h1>Statistiques du système</h1>
+                
+                <h1 >Statistiques du système</h1>
                 <p class="subtitle">Analyse des tickets et performances</p>
             </div>
 

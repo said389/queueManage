@@ -35,13 +35,13 @@ class AdminStats extends Page {
     }
 
     public function getPageTitle() {
-        return "Statistiche";
+        return "Statistiques";
     }
 
     public function getOutput() {
 
         $page = new WebPageOutput();
-        $page->setHtmlPageTitle("Statistiche");
+        $page->setHtmlPageTitle("Statistiques");
 
         $page->setHtmlBodyHeader($this->getDesignCSS());
         $page->setHtmlBodyContent($this->getLayout());
@@ -67,7 +67,6 @@ class AdminStats extends Page {
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
-               
                 <h2>FastQueue</h2>
             </div>
             <span class="admin-badge">Administrateur</span>
@@ -116,18 +115,24 @@ class AdminStats extends Page {
     <main class="main-content">
         <div class="content-wrapper">
             <div class="page-header">
-                
-                <h1 >Statistiques du système</h1>
-                <p class="subtitle">Analyse des tickets et performances</p>
+                <div class="header-content">
+                    <h1>Statistiques du système</h1>
+                    <p class="subtitle">Analyse complète des tickets et performances</p>
+                </div>
             </div>
 
-            <!-- Période -->
-            <div class="card">
+            <!-- Filtres -->
+            <div class="card filter-card">
                 <div class="card-header">
-                    <i class="fas fa-calendar-alt"></i>
+                    <i class="fas fa-filter"></i>
                     <h3>Période : <span class="highlight">$timeSpan</span></h3>
                 </div>
                 {$this->getForm()}
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                {$this->getKPICards()}
             </div>
 
             <!-- Stats par domaine -->
@@ -142,8 +147,8 @@ class AdminStats extends Page {
             <!-- Stats par source -->
             <div class="card">
                 <div class="card-header">
-                    <i class="fas fa-globe"></i>
-                    <h3>Statistiques par source</h3>
+                    <i class="fas fa-layer-group"></i>
+                    <h3>Distribution par source</h3>
                 </div>
                 {$this->getSourceStatsTable()}
             </div>
@@ -152,7 +157,7 @@ class AdminStats extends Page {
             <div class="card">
                 <div class="card-header">
                     <i class="fas fa-user-tie"></i>
-                    <h3>Statistiques par opérateur</h3>
+                    <h3>Performance par opérateur</h3>
                 </div>
                 {$this->getStatsOperatorTables()}
             </div>
@@ -163,7 +168,51 @@ class AdminStats extends Page {
 <!-- Overlay pour mobile -->
 <div class="overlay" id="overlay"></div>
 
+<!-- Date Picker Popovers -->
+<div class="datepicker-popover" id="datePickerFrom">
+    <div class="datepicker-header">
+        <button class="datepicker-prev" onclick="prevMonth('from')"><i class="fas fa-chevron-left"></i></button>
+        <span class="datepicker-month-year" id="monthYearFrom"></span>
+        <button class="datepicker-next" onclick="nextMonth('from')"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <div class="datepicker-weekdays">
+        <div>Lun</div>
+        <div>Mar</div>
+        <div>Mer</div>
+        <div>Jeu</div>
+        <div>Ven</div>
+        <div>Sam</div>
+        <div>Dim</div>
+    </div>
+    <div class="datepicker-days" id="daysFrom"></div>
+</div>
+
+<div class="datepicker-popover" id="datePickerTo">
+    <div class="datepicker-header">
+        <button class="datepicker-prev" onclick="prevMonth('to')"><i class="fas fa-chevron-left"></i></button>
+        <span class="datepicker-month-year" id="monthYearTo"></span>
+        <button class="datepicker-next" onclick="nextMonth('to')"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <div class="datepicker-weekdays">
+        <div>Lun</div>
+        <div>Mar</div>
+        <div>Mer</div>
+        <div>Jeu</div>
+        <div>Ven</div>
+        <div>Sam</div>
+        <div>Dim</div>
+    </div>
+    <div class="datepicker-days" id="daysTo"></div>
+</div>
+
 <script>
+// State
+let currentMonthFrom = new Date();
+let currentMonthTo = new Date();
+let activePickerFrom = false;
+let activePickerTo = false;
+
+/* ---- Sidebar mobile ---- */
 const mobileToggle = document.getElementById('mobileToggle');
 const sidebar = document.getElementById('sidebar');
 const overlay = document.getElementById('overlay');
@@ -182,6 +231,118 @@ if (overlay) {
     });
 }
 
+/* ---- Date Picker ---- */
+function openDatePicker(type) {
+    const picker = type === 'from' ? document.getElementById('datePickerFrom') : document.getElementById('datePickerTo');
+    const input = document.querySelector('input[name="' + type + '"]');
+    
+    if (type === 'from') {
+        activePickerFrom = !activePickerFrom;
+        activePickerTo = false;
+        document.getElementById('datePickerTo').classList.remove('show');
+    } else {
+        activePickerTo = !activePickerTo;
+        activePickerFrom = false;
+        document.getElementById('datePickerFrom').classList.remove('show');
+    }
+    
+    if (type === 'from' ? activePickerFrom : activePickerTo) {
+        picker.classList.add('show');
+        renderCalendar(type);
+        
+        const rect = input.getBoundingClientRect();
+        picker.style.top = (rect.bottom + 10) + 'px';
+        picker.style.left = rect.left + 'px';
+    } else {
+        picker.classList.remove('show');
+    }
+}
+
+function renderCalendar(type) {
+    const currentMonth = type === 'from' ? currentMonthFrom : currentMonthTo;
+    const monthYearEl = document.getElementById(type === 'from' ? 'monthYearFrom' : 'monthYearTo');
+    const daysEl = document.getElementById(type === 'from' ? 'daysFrom' : 'daysTo');
+    const input = document.querySelector('input[name="' + type + '"]');
+    
+    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    
+    monthYearEl.textContent = months[currentMonth.getMonth()] + ' ' + currentMonth.getFullYear();
+    
+    const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    const prevLastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 0);
+    
+    const firstDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+    const lastDateOfMonth = lastDay.getDate();
+    const lastDateOfPrevMonth = prevLastDay.getDate();
+    
+    let html = '';
+    
+    // Previous month days
+    for (let i = firstDayOfWeek; i > 0; i--) {
+        html += '<div class="datepicker-day other-month">' + (lastDateOfPrevMonth - i + 1) + '</div>';
+    }
+    
+    // Current month days
+    const inputDate = input.value ? new Date(input.value.split('/').reverse().join('-')) : null;
+    for (let day = 1; day <= lastDateOfMonth; day++) {
+        const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+        const dateStr = ('0' + day).slice(-2) + '/' + ('0' + (currentMonth.getMonth() + 1)).slice(-2) + '/' + currentMonth.getFullYear();
+        const isSelected = inputDate && inputDate.toDateString() === date.toDateString();
+        const isToday = new Date().toDateString() === date.toDateString();
+        
+        html += '<div class="datepicker-day' + (isSelected ? ' selected' : '') + (isToday ? ' today' : '') + '" onclick="selectDate(\'' + dateStr + '\', \'' + type + '\')">' + day + '</div>';
+    }
+    
+    // Next month days
+    const totalCells = 42;
+    const filledCells = firstDayOfWeek + lastDateOfMonth;
+    for (let day = 1; day <= totalCells - filledCells; day++) {
+        html += '<div class="datepicker-day other-month">' + day + '</div>';
+    }
+    
+    daysEl.innerHTML = html;
+}
+
+function selectDate(dateStr, type) {
+    const input = document.querySelector('input[name="' + type + '"]');
+    input.value = dateStr;
+    
+    const picker = type === 'from' ? document.getElementById('datePickerFrom') : document.getElementById('datePickerTo');
+    picker.classList.remove('show');
+    if (type === 'from') activePickerFrom = false;
+    else activePickerTo = false;
+}
+
+function prevMonth(type) {
+    if (type === 'from') {
+        currentMonthFrom = new Date(currentMonthFrom.getFullYear(), currentMonthFrom.getMonth() - 1);
+    } else {
+        currentMonthTo = new Date(currentMonthTo.getFullYear(), currentMonthTo.getMonth() - 1);
+    }
+    renderCalendar(type);
+}
+
+function nextMonth(type) {
+    if (type === 'from') {
+        currentMonthFrom = new Date(currentMonthFrom.getFullYear(), currentMonthFrom.getMonth() + 1);
+    } else {
+        currentMonthTo = new Date(currentMonthTo.getFullYear(), currentMonthTo.getMonth() + 1);
+    }
+    renderCalendar(type);
+}
+
+// Close pickers when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.form-group') && !e.target.closest('.datepicker-popover')) {
+        document.getElementById('datePickerFrom').classList.remove('show');
+        document.getElementById('datePickerTo').classList.remove('show');
+        activePickerFrom = false;
+        activePickerTo = false;
+    }
+});
+
 function resetDates() {
     document.querySelector('input[name="from"]').value = '';
     document.querySelector('input[name="to"]').value = '';
@@ -189,18 +350,84 @@ function resetDates() {
 }
 
 function toggleOperator(element) {
-    const group = element.closest('.operator-group');
-    group.classList.toggle('expanded');
+    const card = element.closest('.operator-card');
+    card.classList.toggle('expanded');
 }
 
-// Fermer sidebar sur resize si écran large
 window.addEventListener('resize', () => {
     if (window.innerWidth > 768) {
         sidebar.classList.remove('open');
         overlay.classList.remove('show');
     }
 });
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    renderCalendar('from');
+    renderCalendar('to');
+});
 </script>
+HTML;
+    }
+
+    private function getKPICards() {
+        $totalTickets = 0;
+        $totalWait = 0;
+        $totalExec = 0;
+        $count = 0;
+
+        // Récupérer tous les tickets
+        $tickets = TicketStats::fromDatabaseCompleteList();
+        
+        if (empty($tickets)) {
+            return <<<HTML
+            <div class="kpi-card empty">
+                <i class="fas fa-inbox"></i>
+                <p>Aucune donnée disponible</p>
+            </div>
+HTML;
+        }
+
+        // Calculer les statistiques globales
+        foreach ($tickets as $t) {
+            if (!$t->getTimeExec()) continue;
+            
+            // Vérifier si le ticket est dans la plage de dates
+            if ($t->getTimeExec() < $this->dateFrom || $t->getTimeExec() > $this->dateTo) {
+                continue;
+            }
+            
+            $totalTickets++;
+            $totalWait += ($t->getTimeExec() - $t->getTimeIn());
+            $totalExec += ($t->getTimeOut() - $t->getTimeExec());
+            $count++;
+        }
+
+        $avgWait = $count ? floor($totalWait / $count / 60) : 0;
+        $avgExec = $count ? floor($totalExec / $count / 60) : 0;
+
+        return <<<HTML
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-ticket-alt"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Total des tickets</div>
+                    <div class="kpi-value">$totalTickets</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-hourglass-start"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Attente moyenne</div>
+                    <div class="kpi-value">$avgWait <span class="kpi-unit">min</span></div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-stopwatch"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Traitement moyen</div>
+                    <div class="kpi-value">$avgExec <span class="kpi-unit">min</span></div>
+                </div>
+            </div>
 HTML;
     }
 
@@ -231,9 +458,9 @@ HTML;
         <thead>
             <tr>
                 <th>Domaine thématique</th>
-                <th>Billets</th>
-                <th>Temps d'attente moyen</th>
-                <th>Exécution moyenne</th>
+                <th style="text-align: center;">Billets</th>
+                <th style="text-align: center;">Temps d'attente</th>
+                <th style="text-align: center;">Exécution</th>
             </tr>
         </thead>
         <tbody>
@@ -279,9 +506,9 @@ HTML;
             $rows .= <<<HTML
 <tr>
     <td class="td-name">{$td->getName()}</td>
-    <td class="td-number">$count</td>
-    <td><span class="$waitClass">{$avgWait} min</span></td>
-    <td><span class="badge info">{$avgExec} min</span></td>
+    <td style="text-align: center;"><span class="badge info">$count</span></td>
+    <td style="text-align: center;"><span class="$waitClass">$avgWait min</span></td>
+    <td style="text-align: center;"><span class="badge primary">$avgExec min</span></td>
 </tr>
 HTML;
         }
@@ -322,7 +549,7 @@ HTML;
                     <div class="source-label">{$info['label']}</div>
                     <div class="source-count">{$count[$src]}</div>
                     <div class="progress">
-                        <div class="progress-bar" style="width: {$percentage}%"></div>
+                        <div class="progress-bar" style="background: {$info['color']}; width: {$percentage}%"></div>
                     </div>
                     <div class="source-percent">{$percentage}%</div>
                 </div>
@@ -333,7 +560,7 @@ HTML;
         $html .= <<<HTML
         </div>
         <div class="source-total">
-            <i class="fas fa-ticket-alt"></i>
+            <i class="fas fa-chart-pie"></i>
             Total des billets : <strong>{$total}</strong>
         </div>
 HTML;
@@ -345,7 +572,7 @@ HTML;
         $ops = Operator::fromDatabaseCompleteList();
         
         if (empty($ops)) {
-            return '<div class="empty-state">Aucun opérateur trouvé</div>';
+            return '<div class="empty-state"><i class="fas fa-inbox"></i><p>Aucun opérateur trouvé</p></div>';
         }
         
         $html = '<div class="operators-list">';
@@ -357,11 +584,11 @@ HTML;
             <div class="operator-card">
                 <div class="operator-title" onclick="toggleOperator(this)">
                     <div class="operator-avatar">
-                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-user"></i>
                     </div>
                     <div class="operator-info">
                         <div class="operator-name">{$op->getFullName()}</div>
-                        <div class="operator-code">{$op->getCode()}</div>
+                        <div class="operator-code">Code: {$op->getCode()}</div>
                     </div>
                     <i class="fas fa-chevron-down toggle-icon"></i>
                 </div>
@@ -371,9 +598,9 @@ HTML;
                             <thead>
                                 <tr>
                                     <th>Domaine</th>
-                                    <th>Billets</th>
-                                    <th>%</th>
-                                    <th>Temps moyen</th>
+                                    <th style="text-align: center;">Billets</th>
+                                    <th style="text-align: center;">Part</th>
+                                    <th style="text-align: center;">Temps moyen</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -428,14 +655,14 @@ HTML;
             $rows .= <<<HTML
             <tr>
                 <td class="td-name">$code</td>
-                <td class="td-number">{$s['count']}</td>
+                <td style="text-align: center;"><span class="badge info">{$s['count']}</span></td>
                 <td>
                     <div class="percent-bar">
                         <div class="percent-fill" style="width: {$perc}%"></div>
                         <span class="percent-text">{$perc}%</span>
                     </div>
                 </td>
-                <td><span class="badge info">{$avg} min</span></td>
+                <td style="text-align: center;"><span class="badge primary">{$avg} min</span></td>
             </tr>
 HTML;
         }
@@ -445,9 +672,9 @@ HTML;
         $rows .= <<<HTML
             <tr class="total-row">
                 <td><strong>Total</strong></td>
-                <td><strong>{$total}</strong></td>
+                <td style="text-align: center;"><strong>$total</strong></td>
                 <td><strong>100%</strong></td>
-                <td><span class="badge primary"><strong>{$avgTotal} min</strong></span></td>
+                <td style="text-align: center;"><span class="badge primary"><strong>{$avgTotal} min</strong></span></td>
             </tr>
 HTML;
 
@@ -462,12 +689,18 @@ HTML;
         <form method="post" class="date-form">
             <div class="form-row">
                 <div class="form-group">
-                    <label>Du :</label>
-                    <input type="text" name="from" class="date-input" placeholder="jj/mm/aaaa" value="$fromDate">
+                    <label><i class="fas fa-calendar-alt"></i> Du :</label>
+                    <div class="date-input-wrapper">
+                        <input type="text" name="from" class="date-input" placeholder="jj/mm/aaaa" value="$fromDate" readonly onclick="openDatePicker('from')">
+                        <i class="fas fa-calendar-alt picker-icon" onclick="openDatePicker('from')"></i>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Au :</label>
-                    <input type="text" name="to" class="date-input" placeholder="jj/mm/aaaa" value="$toDate">
+                    <label><i class="fas fa-calendar-alt"></i> Au :</label>
+                    <div class="date-input-wrapper">
+                        <input type="text" name="to" class="date-input" placeholder="jj/mm/aaaa" value="$toDate" readonly onclick="openDatePicker('to')">
+                        <i class="fas fa-calendar-alt picker-icon" onclick="openDatePicker('to')"></i>
+                    </div>
                 </div>
                 <div class="form-buttons">
                     <button type="submit" class="btn btn-primary">
@@ -500,7 +733,7 @@ HTML;
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f7fb;
+            background: linear-gradient(135deg, #f5f7fb 0%, #eef2f9 100%);
             color: #1a1a2e;
             overflow-x: hidden;
         }
@@ -643,64 +876,155 @@ HTML;
             flex: 1;
             margin-left: 280px;
             min-height: 100vh;
-            background: #f5f7fb;
+            background: linear-gradient(135deg, #f5f7fb 0%, #eef2f9 100%);
         }
 
         .content-wrapper {
-            padding: 30px 40px;
-            max-width: 1400px;
+            padding: 40px 45px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
         /* Page Header */
         .page-header {
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
-        .page-header h1 {
-            font-size: 28px;
-            font-weight: 700;
+        .header-content h1 {
+            font-size: 32px;
+            font-weight: 800;
             color: #1a1a2e;
             margin-bottom: 8px;
         }
 
         .subtitle {
             color: #666;
-            font-size: 14px;
+            font-size: 15px;
+            font-weight: 500;
         }
 
         /* Cards */
         .card {
             background: white;
-            border-radius: 16px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-radius: 18px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .filter-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
         }
 
         .card-header {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            gap: 14px;
+            margin-bottom: 25px;
+            padding-bottom: 18px;
             border-bottom: 2px solid #f0f0f0;
         }
 
         .card-header i {
-            font-size: 22px;
+            font-size: 24px;
             color: #6C63FF;
+            width: 32px;
+            text-align: center;
         }
 
         .card-header h3 {
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 700;
             color: #1a1a2e;
+            margin: 0;
         }
 
         .highlight {
             color: #6C63FF;
-            font-weight: 700;
+            font-weight: 800;
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: all 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .kpi-card.empty {
+            justify-content: center;
+            text-align: center;
+            color: #999;
+            grid-column: 1 / -1;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .kpi-card.empty i {
+            font-size: 48px;
+            color: #ddd;
+        }
+
+        .kpi-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #6C63FF, #8B82FF);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .kpi-content {
+            flex: 1;
+        }
+
+        .kpi-label {
+            font-size: 13px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #1a1a2e;
+        }
+
+        .kpi-unit {
+            font-size: 14px;
+            color: #999;
+            font-weight: 500;
         }
 
         /* Form */
@@ -717,36 +1041,62 @@ HTML;
 
         .form-group {
             flex: 1;
-            min-width: 180px;
+            min-width: 200px;
+            position: relative;
         }
 
         .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-weight: 600;
             font-size: 13px;
             color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group label i {
+            color: #6C63FF;
+        }
+
+        .date-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
 
         .date-input {
             width: 100%;
-            padding: 12px 15px;
+            padding: 12px 16px 12px 16px;
             border: 2px solid #e0e0e0;
             border-radius: 12px;
             font-size: 14px;
             font-family: inherit;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .date-input:focus {
             outline: none;
             border-color: #6C63FF;
-            box-shadow: 0 0 0 3px rgba(108,99,255,0.1);
+            box-shadow: 0 0 0 4px rgba(108,99,255,0.1);
+        }
+
+        .picker-icon {
+            position: absolute;
+            right: 14px;
+            color: #6C63FF;
+            cursor: pointer;
+            font-size: 16px;
+            pointer-events: none;
         }
 
         .form-buttons {
             display: flex;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -758,6 +1108,9 @@ HTML;
             transition: all 0.3s ease;
             border: none;
             font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-primary {
@@ -767,7 +1120,7 @@ HTML;
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(108,99,255,0.4);
+            box-shadow: 0 6px 20px rgba(108,99,255,0.4);
         }
 
         .btn-secondary {
@@ -779,31 +1132,146 @@ HTML;
             background: #e0e0e0;
         }
 
+        /* Date Picker Popover */
+        .datepicker-popover {
+            position: fixed;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            z-index: 2000;
+            padding: 20px;
+            width: 320px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .datepicker-popover.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .datepicker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .datepicker-month-year {
+            font-weight: 700;
+            font-size: 16px;
+            color: #1a1a2e;
+            flex: 1;
+            text-align: center;
+        }
+
+        .datepicker-prev,
+        .datepicker-next {
+            background: #f0f0f0;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .datepicker-prev:hover,
+        .datepicker-next:hover {
+            background: #6C63FF;
+            color: white;
+        }
+
+        .datepicker-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .datepicker-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .datepicker-day {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .datepicker-day:not(.other-month) {
+            color: #1a1a2e;
+        }
+
+        .datepicker-day:not(.other-month):hover {
+            background: #f0f0f0;
+        }
+
+        .datepicker-day.other-month {
+            color: #ddd;
+            cursor: default;
+        }
+
+        .datepicker-day.today {
+            border: 2px solid #6C63FF;
+            font-weight: 700;
+        }
+
+        .datepicker-day.selected {
+            background: linear-gradient(135deg, #6C63FF, #8B82FF);
+            color: white;
+            font-weight: 700;
+        }
+
         /* Tables */
         .table-container {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            border-radius: 12px;
+            background: #f8f9fa;
         }
 
         .stats-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 500px;
+            min-width: 600px;
         }
 
         .stats-table thead th {
             text-align: left;
-            padding: 15px;
-            background: #f8f9fa;
-            font-weight: 600;
-            font-size: 13px;
+            padding: 16px;
+            background: #f0f0f0;
+            font-weight: 700;
+            font-size: 12px;
             color: #666;
             border-bottom: 2px solid #e0e0e0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .stats-table tbody td {
-            padding: 15px;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 16px;
+            border-bottom: 1px solid #eee;
             font-size: 14px;
         }
 
@@ -812,33 +1280,32 @@ HTML;
         }
 
         .td-name {
-            font-weight: 600;
+            font-weight: 700;
             color: #1a1a2e;
         }
 
-        .td-number {
+        .total-row {
+            background: #f0f0f0;
             font-weight: 700;
-            color: #6C63FF;
         }
 
-        .total-row {
-            background: #f8f9fa;
-            font-weight: 600;
+        .total-row td {
+            border-bottom: 2px solid #e0e0e0;
         }
 
         .empty-row {
             text-align: center;
-            padding: 40px;
+            padding: 40px 20px;
             color: #999;
         }
 
         /* Badges */
         .badge {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 6px 14px;
             border-radius: 20px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .badge.success {
@@ -869,27 +1336,29 @@ HTML;
         /* Source Grid */
         .source-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .source-card {
             display: flex;
-            gap: 15px;
-            padding: 20px;
-            background: #f8f9fa;
+            gap: 18px;
+            padding: 24px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
             border-radius: 16px;
-            transition: transform 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: all 0.3s ease;
         }
 
         .source-card:hover {
             transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
         }
 
         .source-icon {
-            width: 55px;
-            height: 55px;
+            width: 60px;
+            height: 60px;
             border-radius: 14px;
             display: flex;
             align-items: center;
@@ -897,6 +1366,7 @@ HTML;
             font-size: 28px;
             color: white;
             flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .source-details {
@@ -904,16 +1374,19 @@ HTML;
         }
 
         .source-label {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 5px;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         .source-count {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 800;
             color: #1a1a2e;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .progress {
@@ -921,65 +1394,74 @@ HTML;
             border-radius: 10px;
             height: 6px;
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .progress-bar {
-            background: linear-gradient(90deg, #6C63FF, #8B82FF);
             height: 100%;
             border-radius: 10px;
-            transition: width 0.3s ease;
+            transition: width 0.5s ease;
         }
 
         .source-percent {
-            font-size: 12px;
-            font-weight: 600;
-            color: #6C63FF;
+            font-size: 13px;
+            font-weight: 700;
+            color: #666;
         }
 
         .source-total {
-            text-align: right;
-            padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
-            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+            font-size: 15px;
+            color: #666;
         }
 
         .source-total strong {
             color: #6C63FF;
-            font-size: 18px;
+            font-size: 20px;
         }
 
         /* Operators List */
         .operators-list {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 16px;
         }
 
         .operator-card {
-            border: 1px solid #e0e0e0;
+            border: 1px solid rgba(0,0,0,0.03);
             border-radius: 16px;
             overflow: hidden;
             background: white;
+            transition: all 0.3s ease;
         }
 
         .operator-title {
             display: flex;
             align-items: center;
-            gap: 15px;
-            padding: 20px;
-            background: #f8f9fa;
+            gap: 16px;
+            padding: 22px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
             cursor: pointer;
-            transition: background 0.3s ease;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid transparent;
         }
 
         .operator-title:hover {
-            background: #f0f0f0;
+            background: #f8f9fa;
+        }
+
+        .operator-card.expanded .operator-title {
+            border-bottom: 1px solid #e0e0e0;
         }
 
         .operator-avatar {
-            width: 50px;
-            height: 50px;
+            width: 52px;
+            height: 52px;
             background: linear-gradient(135deg, #6C63FF, #8B82FF);
             border-radius: 50%;
             display: flex;
@@ -988,6 +1470,7 @@ HTML;
             color: white;
             font-size: 24px;
             flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(108,99,255,0.2);
         }
 
         .operator-info {
@@ -996,17 +1479,19 @@ HTML;
 
         .operator-name {
             font-weight: 700;
-            font-size: 16px;
+            font-size: 15px;
             color: #1a1a2e;
         }
 
         .operator-code {
             font-size: 12px;
-            color: #666;
+            color: #999;
+            margin-top: 2px;
         }
 
         .toggle-icon {
             color: #999;
+            font-size: 18px;
             transition: transform 0.3s ease;
         }
 
@@ -1024,25 +1509,31 @@ HTML;
             max-height: 2000px;
         }
 
+        .operator-stats .table-container {
+            margin: 0;
+            border-radius: 0;
+        }
+
         /* Percent Bar */
         .percent-bar {
             display: flex;
             align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .percent-fill {
-            width: 80px;
+            flex: 1;
             height: 6px;
             background: linear-gradient(90deg, #6C63FF, #8B82FF);
             border-radius: 3px;
+            min-width: 60px;
         }
 
         .percent-text {
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
             color: #6C63FF;
+            min-width: 40px;
         }
 
         /* Empty State */
@@ -1052,16 +1543,32 @@ HTML;
             color: #999;
         }
 
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+
         /* Responsive */
+        @media (max-width: 1200px) {
+            .content-wrapper {
+                padding: 30px 30px;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            }
+        }
+
         @media (max-width: 1024px) {
             .content-wrapper {
-                padding: 20px 25px;
+                padding: 25px 20px;
             }
         }
 
         @media (max-width: 768px) {
             .mobile-toggle {
-                display: block;
+                display: flex;
             }
 
             .sidebar {
@@ -1077,12 +1584,20 @@ HTML;
             }
 
             .content-wrapper {
-                padding: 80px 15px 20px 15px;
+                padding: 80px 16px 20px 16px;
+            }
+
+            .header-content h1 {
+                font-size: 24px;
             }
 
             .form-row {
                 flex-direction: column;
                 align-items: stretch;
+            }
+
+            .form-group {
+                min-width: 100%;
             }
 
             .form-buttons {
@@ -1091,6 +1606,11 @@ HTML;
 
             .btn {
                 width: 100%;
+                justify-content: center;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
             }
 
             .source-grid {
@@ -1098,11 +1618,17 @@ HTML;
             }
 
             .card {
-                padding: 15px;
+                padding: 20px;
+                margin-bottom: 20px;
             }
 
-            .page-header h1 {
-                font-size: 24px;
+            .card-header {
+                margin-bottom: 20px;
+            }
+
+            .datepicker-popover {
+                width: calc(100vw - 40px);
+                max-width: 320px;
             }
         }
 
@@ -1111,22 +1637,73 @@ HTML;
                 padding: 70px 12px 15px 12px;
             }
 
+            .header-content h1 {
+                font-size: 20px;
+            }
+
             .stats-table {
                 min-width: 400px;
+                font-size: 12px;
+            }
+
+            .stats-table thead th,
+            .stats-table tbody td {
+                padding: 12px;
             }
 
             .operator-title {
-                padding: 15px;
+                padding: 16px;
             }
 
             .operator-avatar {
-                width: 40px;
-                height: 40px;
+                width: 44px;
+                height: 44px;
                 font-size: 20px;
             }
 
             .operator-name {
                 font-size: 14px;
+            }
+
+            .kpi-card {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            .kpi-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 24px;
+            }
+
+            .kpi-value {
+                font-size: 22px;
+            }
+
+            .source-card {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            .source-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 22px;
+            }
+
+            .source-count {
+                font-size: 24px;
+            }
+
+            .datepicker-day {
+                width: 36px;
+                height: 36px;
+                font-size: 12px;
+            }
+
+            .datepicker-popover {
+                width: calc(100vw - 30px);
+                padding: 15px;
             }
         }
 
@@ -1135,7 +1712,8 @@ HTML;
             .sidebar,
             .mobile-toggle,
             .overlay,
-            .form-buttons {
+            .form-buttons,
+            .filter-card {
                 display: none;
             }
 
@@ -1151,6 +1729,7 @@ HTML;
                 break-inside: avoid;
                 box-shadow: none;
                 border: 1px solid #ddd;
+                page-break-inside: avoid;
             }
         }
 
@@ -1178,4 +1757,3 @@ HTML;
 CSS;
     }
 }
-?>

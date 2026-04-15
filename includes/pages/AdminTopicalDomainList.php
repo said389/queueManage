@@ -115,9 +115,9 @@ class AdminTopicalDomainList extends Page {
 
             <!-- Bouton Ajouter -->
             <div class="actions-section">
-                <a href="$gvPath/application/adminTopicalDomainEdit" class="btn btn-primary">
+                <button class="btn btn-primary" onclick="openModal()">
                     <i class="fas fa-plus"></i> Ajouter un domaine
-                </a>
+                </button>
             </div>
         </div>
     </main>
@@ -126,10 +126,98 @@ class AdminTopicalDomainList extends Page {
 <!-- Overlay pour mobile -->
 <div class="overlay" id="overlay"></div>
 
+<!-- ===== MODAL ===== -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModalOnBackdrop(event)">
+    <div class="modal" id="tdModal">
+        <div class="modal-header">
+            <div class="modal-title">
+                <div class="modal-icon"><i class="fas fa-folder-tree" id="modalIcon"></i></div>
+                <div>
+                    <h2 id="modalTitle">Ajouter un domaine thématique</h2>
+                    <p id="modalSubtitle">Remplissez les informations du domaine</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div id="modalMessage" class="modal-message" style="display:none;"></div>
+
+        <form id="tdForm" method="post" action="$gvPath/application/adminTopicalDomainEdit">
+            <input type="hidden" name="td_id" id="modal_td_id" value="0" />
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="modal_td_code">
+                        <i class="fas fa-barcode"></i> Code
+                    </label>
+                    <select name="td_code" id="modal_td_code">
+                        {$this->getComboBoxOptions()}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="modal_td_name">
+                        <i class="fas fa-heading"></i> Nom
+                    </label>
+                    <input type="text" name="td_name" id="modal_td_name"
+                           placeholder="Nom du domaine" autocomplete="off" />
+                </div>
+
+                <div class="form-group">
+                    <label for="modal_td_description">
+                        <i class="fas fa-align-left"></i> Description
+                    </label>
+                    <textarea name="td_description" id="modal_td_description" rows="3"
+                              placeholder="Description du domaine"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="modal_td_icon">
+                            <i class="fas fa-icons"></i> Icône
+                        </label>
+                        <select name="td_icon" id="modal_td_icon">
+                            {$this->getComboBoxIconOptions()}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modal_td_color">
+                            <i class="fas fa-palette"></i> Couleur
+                        </label>
+                        <select name="td_color" id="modal_td_color">
+                            {$this->getComboBoxColorOptions()}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="modal_td_active">
+                        <i class="fas fa-check-circle"></i> Actif
+                    </label>
+                    <input type="checkbox" name="td_active" id="modal_td_active" value="1" />
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> <span id="submitLabel">Enregistrer</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+/* ---- Sidebar mobile ---- */
 const mobileToggle = document.getElementById('mobileToggle');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('overlay');
+const sidebar      = document.getElementById('sidebar');
+const overlay      = document.getElementById('overlay');
 
 if (mobileToggle) {
     mobileToggle.addEventListener('click', () => {
@@ -137,20 +225,64 @@ if (mobileToggle) {
         overlay.classList.add('show');
     });
 }
-
 if (overlay) {
     overlay.addEventListener('click', () => {
         sidebar.classList.remove('open');
         overlay.classList.remove('show');
     });
 }
-
-// Fermer sidebar sur resize si écran large
 window.addEventListener('resize', () => {
     if (window.innerWidth > 768) {
         sidebar.classList.remove('open');
         overlay.classList.remove('show');
     }
+});
+
+/* ---- Modal ---- */
+function openModal(tdId, tdCode, tdName, tdDescription, tdIcon, tdColor, isActive) {
+    const isEdit = !!tdId;
+
+    document.getElementById('modal_td_id').value          = tdId         || 0;
+    document.getElementById('modal_td_code').value        = tdCode       || '';
+    document.getElementById('modal_td_name').value        = tdName       || '';
+    document.getElementById('modal_td_description').value = tdDescription || '';
+    document.getElementById('modal_td_icon').value        = tdIcon       || '0';
+    document.getElementById('modal_td_color').value       = tdColor      || '0';
+    document.getElementById('modal_td_active').checked    = isActive ? true : false;
+
+    document.getElementById('modalTitle').textContent    = isEdit ? 'Modifier le domaine thématique' : 'Ajouter un domaine thématique';
+    document.getElementById('modalSubtitle').textContent = isEdit ? 'Modifiez les informations ci-dessous' : 'Remplissez les informations du domaine';
+    document.getElementById('submitLabel').textContent   = isEdit ? 'Modifier' : 'Enregistrer';
+
+    hideMessage();
+    document.getElementById('modalBackdrop').classList.add('show');
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => document.getElementById('modal_td_code').focus(), 300);
+}
+
+function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function closeModalOnBackdrop(e) {
+    if (e.target === document.getElementById('modalBackdrop')) closeModal();
+}
+
+function showMessage(text, type) {
+    const el = document.getElementById('modalMessage');
+    el.textContent = text;
+    el.className   = 'modal-message ' + type;
+    el.style.display = 'block';
+}
+function hideMessage() {
+    const el = document.getElementById('modalMessage');
+    el.style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
 });
 </script>
 HTML;
@@ -171,22 +303,29 @@ HTML;
         foreach ($tds as $td) {
 
             $id = $td->getId();
-            $code = $td->getCode();
-            $name = $td->getName();
-            $desc = $td->getDescription();
-            $active = $td->getActive() ? "checked" : "";
+            $code = htmlspecialchars($td->getCode());
+            $name = htmlspecialchars($td->getName());
+            $desc = htmlspecialchars($td->getDescription());
+            $icon = (int) $td->getIcon();
+            $color = (int) $td->getColor();
+            $isActive = (int) $td->getActive();
+            $active = $isActive ? "checked" : "";
+            $activeClass = $isActive ? "" : "inactive";
 
             $html .= <<<HTML
-<tr>
+<tr class="$activeClass">
     <td>$code</td>
     <td>$name</td>
     <td>$desc</td>
     <td><input type="checkbox" disabled $active></td>
     <td class="actions-cell">
-        <a class="action-btn edit" href="$gvPath/application/adminTopicalDomainEdit?td_id=$id" title="Modifier">
+        <button class="action-btn edit"
+                onclick="openModal($id, '$code', '$name', '$desc', $icon, $color, $isActive)"
+                title="Modifier">
             <i class="fas fa-edit"></i>
-        </a>
-        <a class="action-btn delete" href="$gvPath/ajax/removeRecord?td_id=$id" title="Supprimer">
+        </button>
+        <a class="action-btn delete" href="$gvPath/ajax/removeRecord?td_id=$id" title="Supprimer"
+           onclick="return confirm('Confirmez-vous la suppression?');">
             <i class="fas fa-trash"></i>
         </a>
     </td>
@@ -199,6 +338,41 @@ HTML;
 
     public function getPageTitle() {
         return "Gestion des domaines thématiques";
+    }
+
+    private function getComboBoxOptions() {
+        $ret = '';
+        $availableCodes = TopicalDomain::getAvailableCodes();
+        foreach ( $availableCodes as $code ) {
+            $ret .= "\n<option value=\"$code\">$code</option>";
+        }
+        return $ret;
+    }
+
+    private function getComboBoxIconOptions() {
+        $ret = '';
+        foreach ( TopicalDomain::$ICONS as $index => $icon ) {
+            if ( $index === 0 ) {
+                $text = "Aucune icône";
+            } else {
+                $text = $icon[0];
+            }
+            $ret .= "\n<option value=\"$index\">$text</option>";
+        }
+        return $ret;
+    }
+
+    private function getComboBoxColorOptions() {
+        $ret = '';
+        foreach ( TopicalDomain::$COLORS as $index => $color ) {
+            if ( $index === 0 ) {
+                $text = "Aucune couleur";
+            } else {
+                $text = $color[0];
+            }
+            $ret .= "\n<option value=\"$index\">$text</option>";
+        }
+        return $ret;
     }
 
     /** ✅ CSS COMPLET */
@@ -447,6 +621,10 @@ HTML;
         background: #f8f9fa;
     }
 
+    .stats-table tbody tr.inactive {
+        opacity: 0.6;
+    }
+
     .empty-row {
         text-align: center;
         color: #999;
@@ -469,6 +647,8 @@ HTML;
         text-decoration: none;
         font-size: 14px;
         transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
     }
 
     .action-btn.edit {
@@ -528,6 +708,125 @@ HTML;
         background: #dee2e6;
     }
 
+    /* ============ MODAL ============ */
+    .modal-backdrop {
+        position: fixed; inset: 0;
+        background: rgba(10, 10, 30, 0.65);
+        backdrop-filter: blur(4px);
+        z-index: 2000;
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.25s ease;
+        padding: 20px;
+    }
+    .modal-backdrop.show {
+        opacity: 1; pointer-events: all;
+    }
+    .modal {
+        background: #fff;
+        border-radius: 20px;
+        width: 100%; max-width: 560px;
+        box-shadow: 0 24px 60px rgba(108,99,255,0.2), 0 8px 24px rgba(0,0,0,0.12);
+        transform: translateY(20px) scale(0.97);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        overflow: hidden;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .modal-backdrop.show .modal {
+        transform: translateY(0) scale(1);
+    }
+
+    /* Modal Header */
+    .modal-header {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        padding: 24px 28px;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { display: flex; align-items: center; gap: 16px; }
+    .modal-icon {
+        width: 48px; height: 48px;
+        background: rgba(108,99,255,0.25);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        color: #6C63FF; font-size: 20px;
+        flex-shrink: 0;
+    }
+    .modal-title h2 {
+        font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 2px;
+    }
+    .modal-title p { font-size: 12px; color: rgba(255,255,255,0.55); margin: 0; }
+    .modal-close {
+        background: rgba(255,255,255,0.1); border: none;
+        width: 36px; height: 36px; border-radius: 10px;
+        color: rgba(255,255,255,0.7); font-size: 16px; cursor: pointer;
+        transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .modal-close:hover { background: rgba(255,107,107,0.3); color: #ff6b6b; }
+
+    /* Modal Message */
+    .modal-message {
+        margin: 16px 28px 0;
+        padding: 12px 16px; border-radius: 10px;
+        font-size: 13px; font-weight: 500;
+    }
+    .modal-message.error { background: #fff0f0; color: #c0392b; border-left: 3px solid #e74c3c; }
+    .modal-message.success { background: #f0fff4; color: #1e7e34; border-left: 3px solid #28a745; }
+
+    /* Modal Body */
+    .modal-body { padding: 24px 28px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .form-group + .form-group { margin-top: 16px; }
+
+    .form-group label {
+        font-size: 12px; font-weight: 600;
+        color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .form-group label i { color: #6C63FF; font-size: 11px; }
+
+    .form-group input[type="text"],
+    .form-group input[type="checkbox"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%; padding: 11px 14px;
+        border: 2px solid #eee; border-radius: 10px;
+        font-size: 14px; color: #1a1a2e;
+        font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        outline: none;
+    }
+    
+    .form-group input[type="checkbox"] {
+        width: auto;
+        padding: 0;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #6C63FF;
+        box-shadow: 0 0 0 3px rgba(108,99,255,0.12);
+    }
+    .form-group input::placeholder,
+    .form-group textarea::placeholder { color: #aaa; }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+        padding: 16px 28px 24px;
+        display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+        border-top: 1px solid #f0f0f0;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .sidebar {
@@ -563,7 +862,13 @@ HTML;
             padding: 10px;
             font-size: 12px;
         }
+
+        .form-row { grid-template-columns: 1fr; }
+        .modal { max-width: 100%; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 14px 20px 20px; }
     }
+
 </style>
 CSS;
     }

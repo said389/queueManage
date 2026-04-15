@@ -15,6 +15,7 @@ class AdminTopicalDomainEdit extends Page {
     private $td_description = "";
     private $td_icon = 0;
     private $td_color = 0;
+    private $td_active = 1;
     
     public function canUse( $userLevel ) {
         return $userLevel === Page::SYSADMIN_USER;
@@ -29,6 +30,7 @@ class AdminTopicalDomainEdit extends Page {
             $this->td_description = gfPostVar( 'td_description', '' );
             $this->td_icon = gfPostVar( 'td_icon', 0 );
             $this->td_color = gfPostVar( 'td_color', 0 );
+            $this->td_active = gfPostVar( 'td_active', 0 ) ? 1 : 0;
         } else {
             $this->td_id = gfGetVar( 'td_id', 0 );
             if ( $this->td_id ) {
@@ -39,6 +41,7 @@ class AdminTopicalDomainEdit extends Page {
                     $this->td_description = $td->getDescription();
                     $this->td_icon = (int) $td->getIcon();
                     $this->td_color = (int) $td->getColor();
+                    $this->td_active = (int) $td->getActive();
                 } else {
                     $this->td_id = 0;
                 }
@@ -54,32 +57,21 @@ class AdminTopicalDomainEdit extends Page {
         
         // Data validation
         if ( $this->td_name === '' ) {
-            $this->message = "Errore: il campo nome è obbligatorio.";
+            $this->message = "Erreur: le champ nom est obligatoire.";
             return true;
         }
         
         // Sanitize td_name
-        if ( preg_match( '/^[0-9a-zàèéìò \']+$/i', $this->td_name ) !== 1 ) {
-            $this->message = "Errore: il nome contiene caratteri non validi.";
+        if ( preg_match( '/^[0-9a-zàèéìòêôûäöüç \']+$/i', $this->td_name ) !== 1 ) {
+            $this->message = "Erreur: le nom contient des caractères non valides.";
             return true;
         }
         
         // Sanitize td_description
-        if ( preg_match( '/^[0-9a-zàèéìò \'.,();:"]*$/i', $this->td_description ) !== 1 ) {
-            $this->message = "Errore: la descrizione contiene caratteri non validi.";
+        if ( preg_match( '/^[0-9a-zàèéìòêôûäöüç \'.,();:"]*$/i', $this->td_description ) !== 1 ) {
+            $this->message = "Erreur: la description contient des caractères non valides.";
             return true;
         }
-        
-        // Check that topical domain is disabled
-        // Hopefully this has already been done before ;-)
-        if ( $this->td_id ) {
-            $td = TopicalDomain::fromDatabaseById( $this->td_id );
-            if ( $td->getActive() ) {
-                $this->message = "Errore: l'area tematica non è disattivata.";
-                return true;
-            }
-        }
-        
         
         if ( $this->td_id === 0 ) {
             $td = TopicalDomain::newRecord();
@@ -92,14 +84,15 @@ class AdminTopicalDomainEdit extends Page {
         $td->setDescription( $this->td_description );
         $td->setIcon( $this->td_icon );
         $td->setColor( $this->td_color );
+        $td->setActive( $this->td_active );
             
         if ( $td->save() ) {
-            gfSetDelayedMsg( 'Operazione effettuata correttamente', 'Ok');
+            gfSetDelayedMsg( 'Opération effectuée correctement', 'Ok');
             global $gvPath;
             $redirect = new RedirectOutput( "$gvPath/application/adminTopicalDomainList" );
             return $redirect;
         } else {
-            $this->message = "Impossibile salvare le modifiche. Ritentare in seguito.";
+            $this->message = "Impossible de sauvegarder les modifications. Réessayez plus tard.";
             return true;
         }
         
@@ -119,9 +112,9 @@ class AdminTopicalDomainEdit extends Page {
     
     private function getPageTitle() {
         if ( $this->td_id ) {
-            return 'Modifica area tematica';
+            return 'Modifier le domaine thématique';
         }
-        return 'Nuova area tematica';
+        return 'Nouveau domaine thématique';
     }
     
     public function getPageContent() {
@@ -131,45 +124,53 @@ class AdminTopicalDomainEdit extends Page {
         $codeCombobox = $this->getComboBoxForCode();
         $iconCombobox = $this->getComboBoxForIcon();
         $colorCombobox = $this->getComboBoxForColor();
+        $activeChecked = $this->td_active ? 'checked' : '';
+        
         $ret = <<<EOS
 $message
 <form action="$gvPath/application/adminTopicalDomainEdit" method="post">
 	<table>
 		<tr>
-			<td>Codice:</td>
+			<td>Code:</td>
 			<td>
 				$codeCombobox
 			</td>
 		</tr>
 		<tr>
-			<td>Nome:</td>
+			<td>Nom:</td>
 			<td><input type="text" name="td_name" id="td_name" size="40" value="$this->td_name" /></td>
 		</tr>
 		<tr>
-			<td>Descrizione:</td>
+			<td>Description:</td>
 			<td>
 				<textarea rows="5" cols="40" name="td_description" id="td_description">$this->td_description</textarea>
 			</td>
 		</tr>
 		<tr>
-			<td>Icona:</td>
+			<td>Icône:</td>
 			<td>
 				$iconCombobox
 			</td>
 		</tr>
 		<tr>
-			<td>Colore:</td>
+			<td>Couleur:</td>
 			<td>
 				$colorCombobox
 			</td>
 		</tr>
 		<tr>
-			<td colspan="2"><input type="submit" value="Salva" /></td>
+			<td>Actif:</td>
+			<td>
+				<input type="checkbox" name="td_active" id="td_active" value="1" $activeChecked />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2"><input type="submit" value="Sauvegarder" /></td>
 		</tr>
 	</table>
 	<input type="hidden" name="td_id" value="$this->td_id" />
 </form>
-<p><a href="$gvPath/application/adminTopicalDomainList">Torna indietro</a></p>
+<p><a href="$gvPath/application/adminTopicalDomainList">Retour</a></p>
 EOS;
         return $ret;
     }
@@ -197,7 +198,7 @@ EOS;
         foreach ( TopicalDomain::$ICONS as $index => $icon ) {
             $selected = $this->td_icon === $index ? ' selected' : '';
             if ( $index === 0 ) {
-                $text = "Nessuna icona";
+                $text = "Aucune icône";
             } else {
                 $text = $icon[0];
             }
@@ -212,7 +213,7 @@ EOS;
         foreach ( TopicalDomain::$COLORS as $index => $color ) {
             $selected = $this->td_color === $index ? ' selected' : '';
             if ( $index === 0 ) {
-                $text = "Nessun colore";
+                $text = "Aucune couleur";
             } else {
                 $text = $color[0];
             }

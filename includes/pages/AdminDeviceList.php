@@ -115,9 +115,9 @@ class AdminDeviceList extends Page {
 
             <!-- Bouton Ajouter -->
             <div class="actions-section">
-                <a href="$gvPath/application/adminDeviceEdit" class="btn btn-primary">
+                <button class="btn btn-primary" onclick="openModal()">
                     <i class="fas fa-plus"></i> Ajouter un appareil
-                </a>
+                </button>
             </div>
         </div>
     </main>
@@ -126,10 +126,72 @@ class AdminDeviceList extends Page {
 <!-- Overlay pour mobile -->
 <div class="overlay" id="overlay"></div>
 
+<!-- ===== MODAL ===== -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModalOnBackdrop(event)">
+    <div class="modal" id="deviceModal">
+        <div class="modal-header">
+            <div class="modal-title">
+                <div class="modal-icon"><i class="fas fa-mobile-alt" id="modalIcon"></i></div>
+                <div>
+                    <h2 id="modalTitle">Ajouter un appareil</h2>
+                    <p id="modalSubtitle">Remplissez les informations de l'appareil</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div id="modalMessage" class="modal-message" style="display:none;"></div>
+
+        <form id="deviceForm" method="post" action="$gvPath/application/adminDeviceEdit">
+            <input type="hidden" name="dev_id" id="modal_dev_id" value="0" />
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="modal_dev_ip_address">
+                        <i class="fas fa-wifi"></i> Adresse IP
+                    </label>
+                    <input type="text" name="dev_ip_address" id="modal_dev_ip_address"
+                           placeholder="ex: 192.168.1.100" autocomplete="off" />
+                </div>
+
+                <div class="form-group">
+                    <label for="modal_dev_desk_number">
+                        <i class="fas fa-desktop"></i> Fonction
+                    </label>
+                    <select name="dev_desk_number" id="modal_dev_desk_number">
+                        {$this->getComboboxOptions()}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="modal_dev_td_code">
+                        <i class="fas fa-folder-tree"></i> Domaine thématique
+                    </label>
+                    <select name="dev_td_code" id="modal_dev_td_code">
+                        {$this->getComboboxTdOptions()}
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> <span id="submitLabel">Enregistrer</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+/* ---- Sidebar mobile ---- */
 const mobileToggle = document.getElementById('mobileToggle');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('overlay');
+const sidebar      = document.getElementById('sidebar');
+const overlay      = document.getElementById('overlay');
 
 if (mobileToggle) {
     mobileToggle.addEventListener('click', () => {
@@ -137,20 +199,62 @@ if (mobileToggle) {
         overlay.classList.add('show');
     });
 }
-
 if (overlay) {
     overlay.addEventListener('click', () => {
         sidebar.classList.remove('open');
         overlay.classList.remove('show');
     });
 }
-
-// Fermer sidebar sur resize si écran large
 window.addEventListener('resize', () => {
     if (window.innerWidth > 768) {
         sidebar.classList.remove('open');
         overlay.classList.remove('show');
     }
+});
+
+/* ---- Modal ---- */
+function openModal(devId, devIp, devDeskNumber, devTdCode) {
+    const isEdit = !!devId;
+
+    document.getElementById('modal_dev_id').value          = devId         || 0;
+    document.getElementById('modal_dev_ip_address').value  = devIp         || '';
+    document.getElementById('modal_dev_desk_number').value = devDeskNumber || '0';
+    document.getElementById('modal_dev_td_code').value     = devTdCode     || '0';
+
+    document.getElementById('modalTitle').textContent    = isEdit ? 'Modifier l\'appareil' : 'Ajouter un appareil';
+    document.getElementById('modalSubtitle').textContent = isEdit ? 'Modifiez les informations ci-dessous' : 'Remplissez les informations de l\'appareil';
+    document.getElementById('modalIcon').className       = isEdit ? 'fas fa-mobile-alt' : 'fas fa-mobile-alt';
+    document.getElementById('submitLabel').textContent   = isEdit ? 'Modifier' : 'Enregistrer';
+
+    hideMessage();
+    document.getElementById('modalBackdrop').classList.add('show');
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => document.getElementById('modal_dev_ip_address').focus(), 300);
+}
+
+function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function closeModalOnBackdrop(e) {
+    if (e.target === document.getElementById('modalBackdrop')) closeModal();
+}
+
+function showMessage(text, type) {
+    const el = document.getElementById('modalMessage');
+    el.textContent = text;
+    el.className   = 'modal-message ' + type;
+    el.style.display = 'block';
+}
+function hideMessage() {
+    const el = document.getElementById('modalMessage');
+    el.style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
 });
 </script>
 HTML;
@@ -172,14 +276,18 @@ HTML;
         foreach ($devices as $dev) {
 
             $id  = $dev->getId();
-            $ip  = $dev->getIpAddress();
+            $ip  = htmlspecialchars($dev->getIpAddress());
 
             if ($dev->getDeskNumber()) {
                 $role = "Affichage compteur " . $dev->getDeskNumber();
                 $tdTxt = "-";
+                $deskNum = $dev->getDeskNumber();
+                $tdCode = '';
             } else {
                 $role  = "Affichage salle";
-                $tdTxt = $dev->getTdCode() ? $dev->getTdCode() : "Tous";
+                $tdTxt = $dev->getTdCode() ? htmlspecialchars($dev->getTdCode()) : "Tous";
+                $deskNum = '0';
+                $tdCode = $dev->getTdCode() ? htmlspecialchars($dev->getTdCode()) : '';
             }
 
             $html .= <<<HTML
@@ -188,10 +296,13 @@ HTML;
     <td>$role</td>
     <td>$tdTxt</td>
     <td class="actions-cell">
-        <a href="$gvPath/application/adminDeviceEdit?dev_id=$id" class="action-btn edit" title="Modifier">
+        <button class="action-btn edit"
+                onclick="openModal($id, '$ip', '$deskNum', '$tdCode')"
+                title="Modifier">
             <i class="fas fa-edit"></i>
-        </a>
-        <a href="$gvPath/ajax/removeRecord?dev_id=$id" class="action-btn delete" title="Supprimer">
+        </button>
+        <a href="$gvPath/ajax/removeRecord?dev_id=$id" class="action-btn delete" title="Supprimer"
+           onclick="return confirm('Confirmez-vous la suppression?');">
             <i class="fas fa-trash"></i>
         </a>
     </td>
@@ -208,7 +319,22 @@ HTML;
         return "Gestion des appareils";
     }
 
+    private function getComboboxOptions() {
+        $ret = '<option value="0">Display de salle</option>';
+        foreach ( Desk::getUsedDeskNumbers() as $num ) {
+            $ret .= "\n<option value=\"$num\">Display compteur $num</option>";
+        }
+        return $ret;
+    }
 
+    private function getComboboxTdOptions() {
+        $ret = '<option value="0">Tous</option>';
+        foreach ( TopicalDomain::fromDatabaseCompleteList() as $td ) {
+            $code = htmlspecialchars($td->getCode());
+            $ret .= "\n<option value=\"$code\">$code</option>";
+        }
+        return $ret;
+    }
 
     /** ✅ CSS COMPLET */
     private function getDesignCSS() {
@@ -483,6 +609,8 @@ HTML;
             text-decoration: none;
             font-size: 14px;
             transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
         }
 
         .action-btn.edit {
@@ -542,6 +670,107 @@ HTML;
             background: #dee2e6;
         }
 
+        /* ============ MODAL ============ */
+        .modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(10, 10, 30, 0.65);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease;
+            padding: 20px;
+        }
+        .modal-backdrop.show {
+            opacity: 1; pointer-events: all;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 20px;
+            width: 100%; max-width: 560px;
+            box-shadow: 0 24px 60px rgba(108,99,255,0.2), 0 8px 24px rgba(0,0,0,0.12);
+            transform: translateY(20px) scale(0.97);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-backdrop.show .modal {
+            transform: translateY(0) scale(1);
+        }
+
+        /* Modal Header */
+        .modal-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 24px 28px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-title { display: flex; align-items: center; gap: 16px; }
+        .modal-icon {
+            width: 48px; height: 48px;
+            background: rgba(108,99,255,0.25);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            color: #6C63FF; font-size: 20px;
+            flex-shrink: 0;
+        }
+        .modal-title h2 {
+            font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 2px;
+        }
+        .modal-title p { font-size: 12px; color: rgba(255,255,255,0.55); margin: 0; }
+        .modal-close {
+            background: rgba(255,255,255,0.1); border: none;
+            width: 36px; height: 36px; border-radius: 10px;
+            color: rgba(255,255,255,0.7); font-size: 16px; cursor: pointer;
+            transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .modal-close:hover { background: rgba(255,107,107,0.3); color: #ff6b6b; }
+
+        /* Modal Message */
+        .modal-message {
+            margin: 16px 28px 0;
+            padding: 12px 16px; border-radius: 10px;
+            font-size: 13px; font-weight: 500;
+        }
+        .modal-message.error { background: #fff0f0; color: #c0392b; border-left: 3px solid #e74c3c; }
+        .modal-message.success { background: #f0fff4; color: #1e7e34; border-left: 3px solid #28a745; }
+
+        /* Modal Body */
+        .modal-body { padding: 24px 28px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group + .form-group { margin-top: 16px; }
+
+        .form-group label {
+            font-size: 12px; font-weight: 600;
+            color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .form-group label i { color: #6C63FF; font-size: 11px; }
+
+        .form-group input[type="text"],
+        .form-group select {
+            width: 100%; padding: 11px 14px;
+            border: 2px solid #eee; border-radius: 10px;
+            font-size: 14px; color: #1a1a2e;
+            font-family: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            outline: none;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #6C63FF;
+            box-shadow: 0 0 0 3px rgba(108,99,255,0.12);
+        }
+        .form-group input::placeholder { color: #aaa; }
+
+        /* Modal Footer */
+        .modal-footer {
+            padding: 16px 28px 24px;
+            display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+            border-top: 1px solid #f0f0f0;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -577,6 +806,10 @@ HTML;
                 padding: 10px;
                 font-size: 12px;
             }
+
+            .modal { max-width: 100%; }
+            .modal-body { padding: 20px; }
+            .modal-footer { padding: 14px 20px 20px; }
         }
 
     </style>

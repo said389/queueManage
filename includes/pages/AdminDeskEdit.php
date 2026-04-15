@@ -7,7 +7,7 @@
  */
 class AdminDeskEdit extends Page {
     private $message = "";
-        
+         
     // Submitted values to show again in the form
     private $desk_id = 0;
     private $desk_number = 0;
@@ -52,19 +52,19 @@ class AdminDeskEdit extends Page {
         
         // Data validation
         if ( $this->desk_number === '' && $this->desk_ip_address === '' ) {
-            $this->message = "Errore: tutti i campi sono obbligatori.";
+            $this->message = "Erreur: tous les champs sont obligatoires.";
             return true;
         }
         
         // desk_number should contain... numbers
         if ( preg_match( '/^[1-9][0-9]*$/', $this->desk_number ) !== 1 ) {
-            $this->message = "Errore: il numero dello sportello non è valido.";
+            $this->message = "Erreur: le numéro du compteur n'est pas valide.";
             return true;
         }
         
         // Check ip_address
         if ( !filter_var( $this->desk_ip_address, FILTER_VALIDATE_IP ) ) {
-            $this->message = "Errore: l'indirizzo IP non è valido.";
+            $this->message = "Erreur: l'adresse IP n'est pas valide.";
             return true;
         }
         
@@ -73,7 +73,7 @@ class AdminDeskEdit extends Page {
                 $desk &&
                 ( $this->desk_id === 0 || $this->desk_id !== (int) $desk->getId() )
         ) {
-            $this->message = "Errore: il numero sportello non è disponibile.";
+            $this->message = "Erreur: le numéro du compteur n'est pas disponible.";
             return true;
         }
         unset( $desk );
@@ -87,7 +87,7 @@ class AdminDeskEdit extends Page {
                     ( $this->desk_id === 0 || $this->desk_id !== (int) $desk->getId() )
                 )
         ) {
-            $this->message = "Errore: l'indirizzo IP è gia stato assegnato.";
+            $this->message = "Erreur: l'adresse IP est déjà assignée.";
             return true;
         }
         unset( $desk );
@@ -100,7 +100,7 @@ class AdminDeskEdit extends Page {
         }
 
         if ( $desk->isOpen() ) {
-            $this->message = "Errore: il desk è aperto. Chiudere la sessione prima di continuare.";
+            $this->message = "Erreur: le compteur est ouvert. Fermer la session avant de continuer.";
             return true;
         }
 
@@ -108,11 +108,11 @@ class AdminDeskEdit extends Page {
         $desk->setIpAddress( $this->desk_ip_address );
         
         if ( $desk->save() ) {
-            gfSetDelayedMsg( 'Operazione effettuata correttamente', 'Ok');
+            gfSetDelayedMsg( 'Opération effectuée correctement', 'Ok');
             $redirect = new RedirectOutput( "$gvPath/application/adminDeskList" );
             return $redirect;
         } else {
-            $this->message = "Impossibile salvare le modifiche. Ritentare in seguito.";
+            $this->message = "Impossible de sauvegarder les modifications. Réessayez plus tard.";
             return true;
         }
         
@@ -132,9 +132,9 @@ class AdminDeskEdit extends Page {
     
     private function getPageTitle() {
         if ( $this->desk_id ) {
-            return 'Modifica sportello';
+            return 'Modifier le compteur';
         }
-        return 'Nuovo sportello';
+        return 'Nouveau compteur';
     }
     
     public function getPageContent() {
@@ -147,21 +147,21 @@ $message
 <form action="$gvPath/application/adminDeskEdit" method="post">
 	<table>
 		<tr>
-			<td>Numero:</td>
+			<td>Numéro:</td>
 			<td><input type="number" name="desk_number" id="desk_number" size="40" min="1" max="99" value="$this->desk_number" /></td>
 		</tr>
 		<tr>
-			<td>Indirizzo IP:</td>
+			<td>Adresse IP:</td>
 			<td><input type="text" name="desk_ip_address" id="desk_ip_address" size="15" value="$this->desk_ip_address" /></td>
 		</tr>
 		<tr>
-			<td colspan="2"><input type="submit" value="Salva" /></td>
+			<td colspan="2"><input type="submit" value="Sauvegarder" /></td>
 		</tr>
 	</table>
 	<input type="hidden" name="desk_id" value="$this->desk_id" />
 	<input type="hidden" name="pairing" value="$this->pairing" />
 </form>
-<p><a href="$gvPath/application/adminDeskList">Torna indietro</a></p>
+<p><a href="$gvPath/application/adminDeskList">Retour</a></p>
 EOS;
         return $ret;
     }

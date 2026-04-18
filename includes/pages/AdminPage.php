@@ -28,62 +28,63 @@ class AdminPage extends Page {
 
         return <<<HTML
 <div class="layout">
-    <!-- Sidebar Toggle pour mobile -->
-    <button class="mobile-toggle" id="mobileToggle">
-        <i class="fas fa-bars"></i>
-    </button>
     
-    <!-- Sidebar -->
+    <!-- Sidebar Collapsible -->
     <aside class="sidebar" id="sidebar">
+        <!-- Bouton Toggle du Sidebar -->
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Basculer la barre latérale">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+
         <div class="sidebar-header">
             <div class="logo">
-                
-                <h2>FastQueue</h2>
+                <i class="fas fa-tasks"></i>
+                <h2 class="logo-text">FastQueue</h2>
             </div>
             <span class="admin-badge">Administrateur</span>
         </div>
 
         <nav class="sidebar-nav">
-            <a href="$gvPath/application/adminPage" class="nav-item active">
+            <a href="$gvPath/application/adminPage" class="nav-item active" data-menu-item="dashboard" title="Tableau de bord">
                 <i class="fas fa-tachometer-alt"></i>
-                <span>Tableau de bord</span>
+                <span class="nav-text">Tableau de bord</span>
             </a>
-            <a href="$gvPath/application/adminOperatorList" class="nav-item">
+            <a href="$gvPath/application/adminOperatorList" class="nav-item" data-menu-item="operators" title="Opérateurs">
                 <i class="fas fa-users"></i>
-                <span>Opérateurs</span>
+                <span class="nav-text">Opérateurs</span>
             </a>
-            <a href="$gvPath/application/adminDeskList" class="nav-item">
+            <a href="$gvPath/application/adminDeskList" class="nav-item" data-menu-item="desks" title="Compteurs">
                 <i class="fas fa-desktop"></i>
-                <span>Compteurs</span>
+                <span class="nav-text">Compteurs</span>
             </a>
-            <a href="$gvPath/application/adminTopicalDomainList" class="nav-item">
+            <a href="$gvPath/application/adminTopicalDomainList" class="nav-item" data-menu-item="domains" title="Domaines thématiques">
                 <i class="fas fa-folder-tree"></i>
-                <span>Domaines thématiques</span>
+                <span class="nav-text">Domaines thématiques</span>
             </a>
-            <a href="$gvPath/application/adminDeviceList" class="nav-item">
+            <a href="$gvPath/application/adminDeviceList" class="nav-item" data-menu-item="devices" title="Appareils">
                 <i class="fas fa-mobile-alt"></i>
-                <span>Appareils</span>
+                <span class="nav-text">Appareils</span>
             </a>
-            <a href="$gvPath/application/adminStats" class="nav-item">
+            <a href="$gvPath/application/adminStats" class="nav-item" data-menu-item="stats" title="Statistiques">
                 <i class="fas fa-chart-line"></i>
-                <span>Statistiques</span>
+                <span class="nav-text">Statistiques</span>
             </a>
-            <a href="$gvPath/application/adminSettings" class="nav-item">
+            <a href="$gvPath/application/adminSettings" class="nav-item" data-menu-item="settings" title="Paramètres">
                 <i class="fas fa-cog"></i>
-                <span>Paramètres</span>
+                <span class="nav-text">Paramètres</span>
             </a>
         </nav>
 
         <div class="sidebar-footer">
-            <a href="$gvPath/application/logoutPage" class="nav-item logout">
+            <a href="$gvPath/application/logoutPage" class="nav-item logout" data-menu-item="logout" title="Déconnexion">
                 <i class="fas fa-sign-out-alt"></i>
-                <span>Déconnexion</span>
+                <span class="nav-text">Déconnexion</span>
             </a>
         </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content" id="mainContent">
         <div class="content-wrapper">
             <div class="page-header">
                 <h1>Tableau de bord</h1>
@@ -228,35 +229,118 @@ class AdminPage extends Page {
     </main>
 </div>
 
-<!-- Overlay pour mobile -->
-<div class="overlay" id="overlay"></div>
-
 <script>
-const mobileToggle = document.getElementById('mobileToggle');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('overlay');
-
-if (mobileToggle) {
-    mobileToggle.addEventListener('click', () => {
-        sidebar.classList.add('open');
-        overlay.classList.add('show');
-    });
-}
-
-if (overlay) {
-    overlay.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('show');
-    });
-}
-
-// Fermer sidebar sur resize si écran large
-window.addEventListener('resize', () => {
-    if (window.innerWidth > 768) {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('show');
+    // ===== GESTION DU SIDEBAR COLLAPSIBLE =====
+    
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const navItems = document.querySelectorAll('.nav-item');
+    
+    // Variable pour tracker l'état du sidebar
+    let sidebarIsExpanded = true;
+    
+    // Fonction pour RÉDUIRE le sidebar
+    function collapseSidebar() {
+        sidebar.classList.add('collapsed');
+        mainContent.classList.add('expanded');
+        sidebarIsExpanded = false;
+        updateToggleIcon();
+        localStorage.setItem('sidebarState', 'collapsed');
+        console.log('Sidebar réduit');
     }
-});
+    
+    // Fonction pour AGRANDIR le sidebar
+    function expandSidebar() {
+        sidebar.classList.remove('collapsed');
+        mainContent.classList.remove('expanded');
+        sidebarIsExpanded = true;
+        updateToggleIcon();
+        localStorage.setItem('sidebarState', 'expanded');
+        console.log('Sidebar agrandi');
+    }
+    
+    // Fonction pour BASCULER le sidebar
+    function toggleSidebar() {
+        console.log('Toggle appelé - État actuel:', sidebarIsExpanded);
+        if (sidebarIsExpanded) {
+            collapseSidebar();
+        } else {
+            expandSidebar();
+        }
+    }
+    
+    // Mettre à jour l'icône du bouton
+    function updateToggleIcon() {
+        const icon = sidebarToggle.querySelector('i');
+        if (sidebarIsExpanded) {
+            icon.classList.remove('fa-chevron-right');
+            icon.classList.add('fa-chevron-left');
+        } else {
+            icon.classList.remove('fa-chevron-left');
+            icon.classList.add('fa-chevron-right');
+        }
+    }
+    
+    // ===== EVENT LISTENERS =====
+    
+    // Bouton toggle du sidebar
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSidebar();
+            // Animation du bouton
+            this.classList.add('animate');
+            setTimeout(() => this.classList.remove('animate'), 300);
+        });
+        
+        // Initialiser l'état
+        updateToggleIcon();
+    }
+    
+    // Restaurer l'état précédent du sidebar
+    function restoreSidebarState() {
+        const savedState = localStorage.getItem('sidebarState');
+        if (savedState === 'collapsed') {
+            collapseSidebar();
+        } else {
+            expandSidebar();
+        }
+    }
+    
+    // Appeler au chargement
+    restoreSidebarState();
+    
+    // Fermer sidebar automatiquement sur petit écran
+    window.addEventListener('load', () => {
+        if (window.innerWidth <= 768) {
+            collapseSidebar();
+        }
+    });
+    
+    // Gérer le redimensionnement
+    window.addEventListener('resize', () => {
+        if (window.innerWidth <= 768 && sidebarIsExpanded) {
+            collapseSidebar();
+        } else if (window.innerWidth > 768 && !sidebarIsExpanded) {
+            expandSidebar();
+        }
+    });
+    
+    // Mettre à jour l'élément actif du menu
+    function updateActiveMenuItem() {
+        const currentPath = window.location.pathname;
+        navItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.href.includes(currentPath)) {
+                item.classList.add('active');
+            }
+        });
+    }
+    
+    // Appeler au chargement
+    updateActiveMenuItem();
 </script>
 HTML;
     }
@@ -291,7 +375,7 @@ HTML;
             min-height: 100vh;
         }
 
-        /* Sidebar */
+        /* Sidebar Collapsible */
         .sidebar {
             width: 280px;
             background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
@@ -303,13 +387,78 @@ HTML;
             top: 0;
             height: 100vh;
             z-index: 1000;
-            transition: transform 0.3s ease;
+            transition: width 0.3s ease;
             overflow-y: auto;
+        }
+
+        /* Sidebar Réduit */
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            padding: 20px 15px;
+        }
+
+        .sidebar.collapsed .logo {
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .sidebar.collapsed .logo-text,
+        .sidebar.collapsed .admin-badge,
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding: 12px 15px;
+        }
+
+        .sidebar.collapsed .nav-item i {
+            width: auto;
+        }
+
+        /* Bouton Toggle du Sidebar */
+        .sidebar-toggle {
+            position: absolute;
+            top: 20px;
+            right: -15px;
+            z-index: 1001;
+            background: linear-gradient(135deg, #6C63FF, #8B82FF);
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(108, 99, 255, 0.4);
+        }
+
+        .sidebar-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .sidebar-toggle.animate {
+            animation: buttonPulse 0.3s ease;
         }
 
         .sidebar-header {
             padding: 30px 25px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
+            transition: padding 0.3s ease;
+            position: relative;
         }
 
         .logo {
@@ -317,16 +466,19 @@ HTML;
             align-items: center;
             gap: 12px;
             margin-bottom: 15px;
+            transition: all 0.3s ease;
         }
 
         .logo i {
             font-size: 28px;
             color: #6C63FF;
+            flex-shrink: 0;
         }
 
-        .logo h2 {
+        .logo-text {
             font-size: 22px;
             font-weight: 700;
+            transition: opacity 0.3s ease;
         }
 
         .admin-badge {
@@ -336,6 +488,7 @@ HTML;
             font-size: 12px;
             color: #6C63FF;
             display: inline-block;
+            transition: opacity 0.3s ease;
         }
 
         .sidebar-nav {
@@ -353,16 +506,29 @@ HTML;
             transition: all 0.3s ease;
             font-size: 14px;
             font-weight: 500;
+            position: relative;
+        }
+
+        .nav-text {
+            transition: opacity 0.3s ease;
         }
 
         .nav-item i {
             width: 20px;
             font-size: 18px;
+            flex-shrink: 0;
         }
 
         .nav-item:hover {
             background: rgba(108, 99, 255, 0.1);
             color: #fff;
+            padding-left: 30px;
+        }
+
+        .sidebar.collapsed .nav-item:hover {
+            padding-left: 15px;
+            background: rgba(108, 99, 255, 0.2);
+            border-radius: 10px;
         }
 
         .nav-item.active {
@@ -371,9 +537,16 @@ HTML;
             border-right: 3px solid #6C63FF;
         }
 
+        .sidebar.collapsed .nav-item.active {
+            border-right: none;
+            background: linear-gradient(90deg, rgba(108, 99, 255, 0.3), rgba(108, 99, 255, 0.1));
+            border-radius: 10px;
+        }
+
         .sidebar-footer {
             padding: 20px 0;
             border-top: 1px solid rgba(255,255,255,0.1);
+            transition: padding 0.3s ease;
         }
 
         .logout {
@@ -382,40 +555,13 @@ HTML;
 
         .logout:hover {
             background: rgba(255, 107, 107, 0.1);
+            padding-left: 30px;
         }
 
-        /* Mobile Toggle */
-        .mobile-toggle {
-            display: none;
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 1001;
-            background: #6C63FF;
-            border: none;
-            width: 45px;
-            height: 45px;
-            border-radius: 12px;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        /* Overlay */
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 999;
-        }
-
-        .overlay.show {
-            display: block;
+        .sidebar.collapsed .logout:hover {
+            padding-left: 15px;
+            background: rgba(255, 107, 107, 0.15);
+            border-radius: 10px;
         }
 
         /* Main Content */
@@ -424,6 +570,11 @@ HTML;
             margin-left: 280px;
             min-height: 100vh;
             background: #f5f7fb;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
         }
 
         .content-wrapper {
@@ -588,6 +739,34 @@ HTML;
             gap: 12px;
         }
 
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes buttonPulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.15);
+            }
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .content-wrapper {
@@ -600,24 +779,28 @@ HTML;
         }
 
         @media (max-width: 768px) {
-            .mobile-toggle {
-                display: block;
-            }
-
             .sidebar {
-                transform: translateX(-100%);
+                width: 80px;
             }
 
-            .sidebar.open {
-                transform: translateX(0);
+            .sidebar.collapsed {
+                width: 80px;
             }
 
             .main-content {
-                margin-left: 0;
+                margin-left: 80px;
+            }
+
+            .main-content.expanded {
+                margin-left: 80px;
+            }
+
+            .sidebar-toggle {
+                display: none;
             }
 
             .content-wrapper {
-                padding: 80px 15px 20px 15px;
+                padding: 20px 15px;
             }
 
             .stats-grid {
@@ -637,11 +820,20 @@ HTML;
             .page-header h1 {
                 font-size: 24px;
             }
+
+            .sidebar.collapsed .logo-text,
+            .sidebar.collapsed .admin-badge {
+                display: none;
+            }
+
+            .nav-item:hover {
+                padding-left: 15px;
+            }
         }
 
         @media (max-width: 480px) {
             .content-wrapper {
-                padding: 70px 12px 15px 12px;
+                padding: 15px 12px;
             }
 
             .stat-card {
@@ -675,7 +867,7 @@ HTML;
         /* Print */
         @media print {
             .sidebar,
-            .mobile-toggle,
+            .sidebar-toggle,
             .overlay {
                 display: none;
             }

@@ -2,6 +2,7 @@
 /**
  * Smart Queue Management - Client Space
  * Adapté à la structure réelle de la table tickets
+ * Design Premium Amélioré + Menu Langue Escamotable
  */
 
 session_start();
@@ -269,21 +270,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --accent: #8b5cf6;
-            --bg-light: #f8fafc;
-            --border-light: #e2e8f0;
-            --text-dark: #1e293b;
-            --text-light: #64748b;
+            --primary: #5a67d8;
+            --primary-dark: #4c51bf;
+            --primary-light: #667eea;
+            --accent: #6b5ce7;
+            --accent-dark: #5a4fd1;
+            --success: #48bb78;
+            --bg-light: #f7fafc;
+            --bg-lighter: #edf2f7;
+            --bg-dark: #2d3748;
+            --border-light: #cbd5e0;
+            --border-med: #a0aec0;
+            --text-dark: #1a202c;
+            --text-light: #718096;
+            --text-lighter: #a0aec0;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+            --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.18);
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 50%, #e6f0ff 100%);
             min-height: 100vh;
             color: var(--text-dark);
             line-height: 1.6;
+            overflow-x: hidden;
         }
         
         .container-main {
@@ -294,75 +307,132 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 20px;
         }
         
-        /* Progress Bar */
+        /* ═════════════════════════════════════════════════════════════ */
+        /* STEPPER - Indicateur de Progression */
+        /* ═════════════════════════════════════════════════════════════ */
         .progress-container {
-            margin-bottom: 32px;
+            margin-bottom: 48px;
         }
         
         .progress-bar {
             width: 100%;
-            height: 4px;
+            height: 2px;
             background: var(--border-light);
-            border-radius: 2px;
+            border-radius: 1px;
             overflow: hidden;
+            margin-bottom: 28px;
+            position: relative;
         }
         
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
-            border-radius: 2px;
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 1px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 12px rgba(90, 103, 216, 0.4);
         }
         
         .progress-steps {
             display: flex;
             justify-content: space-between;
-            margin-top: 12px;
-            gap: 12px;
+            gap: 16px;
         }
         
         .progress-step {
             flex: 1;
-            height: 32px;
-            background: var(--bg-light);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .progress-step-circle {
+            width: 40px;
+            height: 40px;
+            background: white;
             border: 2px solid var(--border-light);
-            border-radius: 8px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-light);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            z-index: 2;
+        }
+        
+        .progress-step.active .progress-step-circle {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-color: transparent;
+            color: white;
+            box-shadow: var(--shadow-md), 0 0 20px rgba(90, 103, 216, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .progress-step.completed .progress-step-circle {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .progress-step-label {
             font-size: 12px;
             font-weight: 600;
             color: var(--text-light);
+            text-align: center;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            opacity: 0.8;
             transition: all 0.3s ease;
         }
         
-        .progress-step.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        .progress-step.active .progress-step-label,
+        .progress-step.completed .progress-step-label {
+            opacity: 1;
+            color: var(--text-dark);
+            font-weight: 700;
         }
         
-        .progress-step.completed {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
+        .progress-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            right: -50%;
+            height: 2px;
+            background: var(--border-light);
+            z-index: 1;
+            transition: background 0.3s ease;
         }
         
+        .progress-step.completed:not(:last-child)::after {
+            background: var(--success);
+        }
+        
+        /* ═════════════════════════════════════════════════════════════ */
+        /* CARD - Conteneur Principal */
+        /* ═══════════════════���═════════════════════════════════════════ */
         .card {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            padding: 48px;
-            max-width: 600px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-xl);
+            padding: 56px;
+            max-width: 640px;
             width: 100%;
-            animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
         }
         
         @keyframes slideIn {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(24px);
             }
             to {
                 opacity: 1;
@@ -381,6 +451,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
         .step {
             display: none;
         }
@@ -391,35 +472,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         h1 {
-            font-size: 32px;
-            font-weight: 700;
+            font-size: 36px;
+            font-weight: 800;
             color: var(--text-dark);
             text-align: center;
             margin-bottom: 12px;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.8px;
         }
         
         .subtitle {
             text-align: center;
             color: var(--text-light);
-            margin-bottom: 32px;
+            margin-bottom: 36px;
             font-size: 15px;
             font-weight: 500;
             letter-spacing: 0.3px;
+            line-height: 1.5;
         }
         
+        /* ═════════════════════════════════════════════════════════════ */
+        /* QR CODE SECTION */
+        /* ═════════════════════════════════════════════════════════════ */
         .qr-container {
             text-align: center;
-            margin-bottom: 32px;
-            padding: 28px;
-            background: var(--bg-light);
+            margin-bottom: 36px;
+            padding: 36px;
+            background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-lighter) 100%);
             border: 1px solid var(--border-light);
-            border-radius: 12px;
+            border-radius: 16px;
             backdrop-filter: blur(10px);
         }
         
         .qr-container p {
-            margin-bottom: 16px;
+            margin-bottom: 24px;
             font-size: 14px;
             color: var(--text-light);
             font-weight: 500;
@@ -427,73 +512,226 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         #qrcode {
             display: inline-block;
-            padding: 12px;
-            background: white;
-            border-radius: 8px;
-        }
-        
-        /* Language Toggle */
-        .language-toggle-wrapper {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 32px;
-        }
-        
-        .language-toggle {
-            display: flex;
-            background: var(--bg-light);
-            border: 1px solid var(--border-light);
-            border-radius: 10px;
-            padding: 4px;
-            gap: 4px;
-        }
-        
-        .lang-toggle-btn {
-            padding: 10px 16px;
-            border: none;
-            background: transparent;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-light);
-            transition: all 0.25s ease;
-            white-space: nowrap;
-            position: relative;
-        }
-        
-        .lang-toggle-btn:hover {
-            color: var(--text-dark);
-        }
-        
-        .lang-toggle-btn.active {
-            background: white;
-            color: var(--primary);
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
-        }
-        
-        .language-buttons {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin: 28px 0;
-        }
-        
-        .lang-btn {
             padding: 16px;
-            border: 1px solid var(--border-light);
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        /* ═════════════════════════════════════════════════════════════ */
+        /* LANGUAGE SELECTOR TOGGLE - Menu Escamotable Premium */
+        /* ═════════════════════════════════════════════════════════════ */
+        .language-selector {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            z-index: 1000;
+        }
+        
+        html[dir="rtl"] .language-selector {
+            right: auto;
+            left: 32px;
+        }
+        
+        /* Bouton Circulaire Flottant */
+        .language-toggle-btn-float {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border: none;
             cursor: pointer;
-            font-size: 15px;
-            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: var(--shadow-lg), 0 0 24px rgba(90, 103, 216, 0.4);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 1001;
+            color: white;
+            font-weight: 700;
+        }
+        
+        .language-toggle-btn-float:hover {
+            transform: scale(1.1) translateY(-4px);
+            box-shadow: var(--shadow-xl), 0 0 32px rgba(90, 103, 216, 0.5);
+        }
+        
+        .language-toggle-btn-float:active {
+            transform: scale(0.95);
+        }
+        
+        /* Backdrop Semi-transparent */
+        .language-menu-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0);
+            z-index: 999;
+            transition: background 0.3s ease;
+        }
+        
+        .language-menu-backdrop.active {
+            display: block;
+            background: rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Menu Dropdown */
+        .language-dropdown-menu {
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-light);
+            padding: 12px;
+            min-width: 200px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            animation: scaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1002;
+        }
+        
+        html[dir="rtl"] .language-dropdown-menu {
+            right: auto;
+            left: 0;
+        }
+        
+        .language-dropdown-menu.active {
+            display: flex;
+        }
+        
+        /* Items du Menu */
+        .language-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            background: var(--bg-light);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             color: var(--text-dark);
+            font-weight: 600;
+            font-size: 14px;
             position: relative;
             overflow: hidden;
         }
         
-        .lang-btn::before {
+        .language-menu-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+            opacity: 0.1;
+            transition: width 0.3s ease;
+        }
+        
+        .language-menu-item:hover {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: var(--shadow-sm);
+            transform: translateX(-4px);
+        }
+        
+        html[dir="rtl"] .language-menu-item:hover {
+            transform: translateX(4px);
+        }
+        
+        .language-menu-item.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(90, 103, 216, 0.3);
+        }
+        
+        .language-menu-item.active::before {
+            display: none;
+        }
+        
+        /* Indicateur de Sélection */
+        .language-menu-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-lighter);
+            transition: all 0.3s ease;
+            margin-left: auto;
+        }
+        
+        html[dir="rtl"] .language-menu-indicator {
+            margin-left: 0;
+            margin-right: auto;
+        }
+        
+        .language-menu-item.active .language-menu-indicator {
+            background: white;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+            transform: scale(1.2);
+        }
+        
+        .language-menu-label {
+            flex: 1;
+        }
+        
+        .language-menu-code {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.7;
+            min-width: 24px;
+            text-align: right;
+        }
+        
+        html[dir="rtl"] .language-menu-code {
+            text-align: left;
+        }
+        
+        .language-menu-item.active .language-menu-code {
+            opacity: 1;
+        }
+        
+        /* ═════════════════════════════════════════════════════════════ */
+        /* LANGUAGE TOGGLE - Étape 1 */
+        /* ═════════════════════════════════════════════════════════════ */
+        .language-toggle-wrapper {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 36px;
+        }
+        
+        .language-toggle {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        .lang-toggle-btn {
+            padding: 14px 16px;
+            border: 1px solid var(--border-light);
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dark);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .lang-toggle-btn::before {
             content: '';
             position: absolute;
             inset: 0;
@@ -502,26 +740,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transition: opacity 0.3s ease;
         }
         
-        .lang-btn:hover {
+        .lang-toggle-btn:hover {
             border-color: var(--primary);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
         
-        .lang-btn.active {
+        .lang-toggle-btn.active {
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             color: white;
             border-color: transparent;
-            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+            box-shadow: var(--shadow-md), 0 0 24px rgba(90, 103, 216, 0.3);
         }
         
-        .lang-btn span {
+        .lang-toggle-btn span {
             position: relative;
             z-index: 1;
         }
         
-        /* Form Group Styling */
+        /* ═════════════════════════════════════════════════════════════ */
+        /* FORM STYLING */
+        /* ═════════════════════════════════════════════════════════════ */
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: 28px;
             animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
@@ -532,12 +773,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         label {
             display: block;
             margin-bottom: 10px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-dark);
-            font-size: 14px;
-            letter-spacing: 0.3px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
-            opacity: 0.8;
+            opacity: 0.95;
         }
         
         input[type="text"],
@@ -546,17 +787,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%;
             padding: 14px 16px;
             border: 1px solid var(--border-light);
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 15px;
             background: white;
             color: var(--text-dark);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: inherit;
+            font-weight: 500;
         }
         
         input[type="text"]::placeholder,
         input[type="tel"]::placeholder {
-            color: var(--text-light);
+            color: var(--text-lighter);
+            font-weight: 400;
         }
         
         input[type="text"]:focus,
@@ -564,24 +807,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         select:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-            background: linear-gradient(white, white) padding-box,
-                        linear-gradient(135deg, var(--primary), var(--accent)) border-box;
-            border: 1px solid transparent;
+            box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.1), var(--shadow-md);
+            background: white;
         }
         
+        /* ══════════════════════════════════════════════════��══════════ */
+        /* SERVICE BUTTONS */
+        /* ═════════════════════════════════════════════════════════════ */
         .service-buttons {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 12px;
-            margin: 28px 0;
+            gap: 14px;
+            margin: 32px 0;
         }
         
         .service-btn {
-            padding: 20px 20px;
+            padding: 20px 22px;
             border: 1px solid var(--border-light);
             background: white;
-            border-radius: 10px;
+            border-radius: 14px;
             cursor: pointer;
             font-size: 15px;
             font-weight: 600;
@@ -590,6 +834,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: left;
             position: relative;
             overflow: hidden;
+            box-shadow: var(--shadow-sm);
         }
         
         .service-btn::before {
@@ -599,14 +844,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             left: 0;
             width: 4px;
             height: 0;
-            background: var(--primary);
+            background: linear-gradient(180deg, var(--primary) 0%, var(--accent) 100%);
             transition: height 0.3s ease;
         }
         
         .service-btn:hover {
             border-color: var(--primary);
             background: var(--bg-light);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
         
         .service-btn:hover::before {
@@ -617,202 +863,199 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             color: white;
             border-color: transparent;
-            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+            box-shadow: var(--shadow-lg), 0 0 24px rgba(90, 103, 216, 0.3);
         }
         
         .service-btn.active::before {
             display: none;
         }
         
+        .service-btn small {
+            display: block;
+            font-size: 13px;
+            font-weight: 400;
+            margin-top: 6px;
+            opacity: 0.8;
+        }
+        
+        .service-btn.active small {
+            opacity: 0.9;
+        }
+        
         .no-services {
-            padding: 32px;
+            padding: 40px;
             text-align: center;
-            background: #fee2e2;
-            border-radius: 12px;
-            color: #991b1b;
-            border: 1px solid #fecaca;
-            font-weight: 500;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border-radius: 14px;
+            color: #742a2a;
+            border: 1px solid #fca5a5;
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
         }
         
         .db-error {
             padding: 16px;
-            background: #fef3c7;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
             border: 1px solid #fcd34d;
-            border-radius: 10px;
-            color: #92400e;
-            margin-bottom: 20px;
+            border-radius: 12px;
+            color: #78350f;
+            margin-bottom: 24px;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
         }
         
+        /* ═════════════════════════════════════════════════════════════ */
+        /* BUTTONS */
+        /* ═════════════════════════════════════════════════════════════ */
         .button-group {
             display: flex;
-            gap: 12px;
-            margin-top: 32px;
+            gap: 14px;
+            margin-top: 40px;
             justify-content: space-between;
         }
         
         .btn {
             flex: 1;
-            padding: 16px 20px;
+            padding: 16px 24px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            letter-spacing: 0.3px;
+            letter-spacing: 0.5px;
             position: relative;
             overflow: hidden;
+            box-shadow: var(--shadow-md);
+            text-transform: uppercase;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .btn-primary {
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
         }
         
         .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg), 0 0 28px rgba(90, 103, 216, 0.35);
         }
         
         .btn-primary:active:not(:disabled) {
-            transform: translateY(0);
+            transform: translateY(-1px);
         }
         
         .btn-primary:disabled {
-            opacity: 0.5;
+            opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }
         
         .btn-secondary {
-            background: var(--bg-light);
+            background: white;
             color: var(--text-dark);
-            border: 1px solid var(--border-light);
+            border: 1.5px solid var(--border-light);
         }
         
         .btn-secondary:hover {
-            background: white;
-            border-color: var(--primary);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
-        }
-        
-        .language-selector {
-            position: fixed;
-            bottom: 24px;
-            left: 24px;
-            z-index: 1000;
-            animation: slideIn 0.5s ease-out 0.3s backwards;
-        }
-        
-        html[dir="rtl"] .language-selector {
-            left: auto;
-            right: 24px;
-        }
-        
-        .lang-dropdown {
-            display: flex;
-            gap: 8px;
-            background: white;
-            padding: 8px 12px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-            border: 1px solid var(--border-light);
-            backdrop-filter: blur(10px);
-        }
-        
-        .lang-dropdown button {
-            padding: 8px 12px;
-            border: 1px solid var(--border-light);
-            background: transparent;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            transition: all 0.25s ease;
-            color: var(--text-light);
-        }
-        
-        .lang-dropdown button:hover {
+            background: var(--bg-light);
             border-color: var(--primary);
             color: var(--primary);
+            box-shadow: var(--shadow-md), 0 0 20px rgba(90, 103, 216, 0.15);
         }
         
-        .lang-dropdown button.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
+        .btn-secondary:active {
+            transform: translateY(-1px);
         }
         
+        /* ═════════════════════════════════════════════════════════════ */
+        /* TICKET PREVIEW */
+        /* ═════════════════════════════════════════════════════════════ */
         .ticket-preview {
             background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
-            padding: 32px;
-            border-radius: 12px;
+            padding: 40px;
+            border-radius: 16px;
             text-align: center;
-            margin: 28px 0;
+            margin: 36px 0;
             border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-md);
         }
         
         .ticket-preview h2 {
             font-size: 28px;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             color: var(--text-dark);
-            font-weight: 700;
+            font-weight: 800;
         }
         
         .ticket-number {
-            font-size: 36px;
-            font-weight: 700;
+            font-size: 42px;
+            font-weight: 800;
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin: 16px 0;
-            letter-spacing: 2px;
+            margin: 20px 0;
+            letter-spacing: 3px;
+            font-family: 'Courier New', monospace;
         }
         
         .ticket-info {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 16px 0;
+            padding: 24px;
+            border-radius: 12px;
+            margin: 20px 0;
             text-align: left;
             border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-sm);
         }
         
         .ticket-info p {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
+            padding: 14px 0;
             border-bottom: 1px solid var(--border-light);
             font-size: 14px;
         }
         
         .ticket-info p:last-child {
             border-bottom: none;
+            padding-bottom: 0;
         }
         
         .ticket-info strong {
             color: var(--text-dark);
-            font-weight: 600;
+            font-weight: 700;
         }
         
         .ticket-info span {
             color: var(--text-light);
-        }
-        
-        .error-message {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 16px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: none;
-            border: 1px solid #fecaca;
             font-weight: 500;
         }
         
+        /* ═════════════════════════════════════════════════════════════ */
+        /* ERROR MESSAGE */
+        /* ═════════════════════════════════════════════════════════════ */
+        .error-message {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #742a2a;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            display: none;
+            border: 1px solid #fca5a5;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        /* ═════════════════════════════════════════════════════════════ */
+        /* RESPONSIVE DESIGN */
+        /* ═════════════════════════════════════════════════════════════ */
         @media print {
             body {
                 background: white;
@@ -820,64 +1063,171 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             .card {
                 box-shadow: none;
+                padding: 40px;
             }
             
             .language-selector,
             .button-group,
             .progress-container,
-            .language-toggle-wrapper {
+            .language-menu-backdrop {
                 display: none;
             }
         }
         
         @media (max-width: 768px) {
             .card {
-                padding: 28px 24px;
+                padding: 36px 24px;
+                border-radius: 16px;
             }
             
             h1 {
-                font-size: 26px;
+                font-size: 28px;
             }
             
-            .language-buttons,
-            .service-buttons {
-                grid-template-columns: 1fr;
-            }
-            
-            .button-group {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .btn {
-                width: 100%;
-            }
-            
-            .progress-steps {
-                flex-direction: column;
+            .subtitle {
+                font-size: 14px;
             }
             
             .language-toggle {
-                flex-wrap: wrap;
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .button-group {
+                flex-direction: row;
+                gap: 12px;
+            }
+            
+            .btn {
+                flex: 1;
+                padding: 14px 16px;
+                font-size: 14px;
+            }
+            
+            .progress-step {
+                gap: 6px;
+            }
+            
+            .progress-step-circle {
+                width: 36px;
+                height: 36px;
+                font-size: 13px;
+            }
+            
+            .progress-step-label {
+                font-size: 11px;
+            }
+            
+            .language-selector {
+                bottom: 20px;
+                right: 20px;
+            }
+            
+            html[dir="rtl"] .language-selector {
+                right: auto;
+                left: 20px;
+            }
+            
+            .language-toggle-btn-float {
+                width: 52px;
+                height: 52px;
+                font-size: 26px;
+            }
+            
+            .language-dropdown-menu {
+                min-width: 180px;
             }
         }
         
         @media (max-width: 480px) {
             .card {
-                padding: 20px 16px;
+                padding: 28px 20px;
             }
             
             h1 {
-                font-size: 22px;
+                font-size: 24px;
             }
             
-            .lang-btn {
-                padding: 14px 12px;
+            .progress-container {
+                margin-bottom: 32px;
+            }
+            
+            .progress-step-circle {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+            
+            .language-toggle {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            
+            .lang-toggle-btn {
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+            
+            .qr-container {
+                padding: 24px;
+            }
+            
+            .service-btn {
+                padding: 18px 16px;
                 font-size: 14px;
             }
             
-            .language-toggle-wrapper {
+            .button-group {
+                gap: 10px;
+                margin-top: 32px;
+            }
+            
+            .btn {
+                padding: 13px 14px;
+                font-size: 13px;
+                min-height: 44px;
+            }
+            
+            .form-group {
                 margin-bottom: 20px;
+            }
+            
+            .ticket-preview {
+                padding: 28px 20px;
+            }
+            
+            .ticket-number {
+                font-size: 32px;
+                letter-spacing: 2px;
+            }
+            
+            .ticket-info {
+                padding: 16px;
+            }
+            
+            .language-selector {
+                bottom: 16px;
+                right: 16px;
+            }
+            
+            html[dir="rtl"] .language-selector {
+                right: auto;
+                left: 16px;
+            }
+            
+            .language-toggle-btn-float {
+                width: 48px;
+                height: 48px;
+                font-size: 22px;
+            }
+            
+            .language-dropdown-menu {
+                min-width: 160px;
+                bottom: 70px;
+            }
+            
+            .language-menu-item {
+                padding: 12px 14px;
+                font-size: 13px;
             }
         }
     </style>
@@ -885,16 +1235,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="container-main">
         <div class="card">
-            <!-- Progress Bar -->
+            <!-- STEPPER - Indicateur de Progression -->
             <div class="progress-container">
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill" style="width: 25%;"></div>
                 </div>
                 <div class="progress-steps">
-                    <div class="progress-step active" id="progressStep1">1</div>
-                    <div class="progress-step" id="progressStep2">2</div>
-                    <div class="progress-step" id="progressStep3">3</div>
-                    <div class="progress-step" id="progressStep4">✓</div>
+                    <div class="progress-step active" id="progressStep1">
+                        <div class="progress-step-circle">1</div>
+                        <div class="progress-step-label">Accueil</div>
+                    </div>
+                    <div class="progress-step" id="progressStep2">
+                        <div class="progress-step-circle">2</div>
+                        <div class="progress-step-label">Service</div>
+                    </div>
+                    <div class="progress-step" id="progressStep3">
+                        <div class="progress-step-circle">3</div>
+                        <div class="progress-step-label">Infos</div>
+                    </div>
+                    <div class="progress-step" id="progressStep4">
+                        <div class="progress-step-circle">✓</div>
+                        <div class="progress-step-label">Ticket</div>
+                    </div>
                 </div>
             </div>
             
@@ -911,10 +1273,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- Language Toggle -->
                 <div class="language-toggle-wrapper">
                     <div class="language-toggle">
-                        <button class="lang-toggle-btn active" onclick="selectLanguage('ar')">🇸🇦 <?php echo $t['arabic']; ?></button>
-                        <button class="lang-toggle-btn active" onclick="selectLanguage('fr')">🇫🇷 <?php echo $t['french']; ?></button>
-                        <button class="lang-toggle-btn active" onclick="selectLanguage('en')">🇬🇧 <?php echo $t['english']; ?></button>
-                        <button class="lang-toggle-btn active" onclick="selectLanguage('it')">🇮🇹 <?php echo $t['italian']; ?></button>
+                        <button class="lang-toggle-btn active" onclick="selectLanguage('ar')">
+                            <span>🇸🇦 <?php echo $t['arabic']; ?></span>
+                        </button>
+                        <button class="lang-toggle-btn active" onclick="selectLanguage('fr')">
+                            <span>🇫🇷 <?php echo $t['french']; ?></span>
+                        </button>
+                        <button class="lang-toggle-btn active" onclick="selectLanguage('en')">
+                            <span>🇬🇧 <?php echo $t['english']; ?></span>
+                        </button>
+                        <button class="lang-toggle-btn active" onclick="selectLanguage('it')">
+                            <span>🇮🇹 <?php echo $t['italian']; ?></span>
+                        </button>
                     </div>
                 </div>
                 
@@ -943,14 +1313,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     onclick="selectService('<?php echo htmlspecialchars($domaine['nom']); ?>', this)">
                                 📌 <?php echo htmlspecialchars($domaine['nom']); ?>
                                 <?php if (!empty($domaine['description'])): ?>
-                                    <br><small style="opacity: 0.7; font-weight: normal;"><?php echo htmlspecialchars($domaine['description']); ?></small>
+                                    <small><?php echo htmlspecialchars($domaine['description']); ?></small>
                                 <?php endif; ?>
                             </button>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <div class="no-services">
                             <p>❌ Aucun service disponible</p>
-                            <p style="font-size: 12px; margin-top: 10px;">Veuillez contacter l'administrateur</p>
+                            <p style="font-size: 12px; margin-top: 12px;">Veuillez contacter l'administrateur</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -1037,43 +1407,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     
-    <!-- Sélecteur de Langue -->
+    <!-- SÉLECTEUR DE LANGUE - Menu Escamotable Premium -->
+    <div class="language-menu-backdrop" id="languageMenuBackdrop" onclick="closeLanguageMenu()"></div>
+    
     <div class="language-selector" id="languageSelector">
-        <div class="lang-dropdown">
-            <button onclick="changeLanguage('ar')">العربية</button>
-            <button onclick="changeLanguage('fr')">FR</button>
-            <button onclick="changeLanguage('en')">EN</button>
-            <button onclick="changeLanguage('it')">IT</button>
+        <button class="language-toggle-btn-float" id="languageToggleBtn" onclick="toggleLanguageMenu()">
+            🌐
+        </button>
+        
+        <div class="language-dropdown-menu" id="languageDropdownMenu">
+            <button class="language-menu-item active" onclick="selectLanguageFromMenu('ar')">
+                <div class="language-menu-label">العربية</div>
+                <div class="language-menu-code">AR</div>
+                <div class="language-menu-indicator"></div>
+            </button>
+            
+            <button class="language-menu-item" onclick="selectLanguageFromMenu('fr')">
+                <div class="language-menu-label">Français</div>
+                <div class="language-menu-code">FR</div>
+                <div class="language-menu-indicator"></div>
+            </button>
+            
+            <button class="language-menu-item" onclick="selectLanguageFromMenu('en')">
+                <div class="language-menu-label">English</div>
+                <div class="language-menu-code">EN</div>
+                <div class="language-menu-indicator"></div>
+            </button>
+            
+            <button class="language-menu-item" onclick="selectLanguageFromMenu('it')">
+                <div class="language-menu-label">Italiano</div>
+                <div class="language-menu-code">IT</div>
+                <div class="language-menu-indicator"></div>
+            </button>
         </div>
     </div>
     
     <script>
         let currentStep = 1;
         let selectedService = '';
+        let currentLanguage = '<?php echo $lang; ?>';
         
         console.log('🚀 Domaines au chargement:', <?php echo json_encode($domaines); ?>);
         
-        function generateQRCode() {
-            const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = '';
-            const mobileUrl = window.location.href.split('?')[0];
-            new QRCode(qrContainer, {
-                text: mobileUrl,
-                width: 200,
-                height: 200,
-                colorDark: '#667eea',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.H
-            });
+        // ═══════════════════════════════════════════════════════════════
+        // MENU DE LANGUE - Fonctions Escamotables
+        // ════════════════════════════════════════════════��══════════════
+        
+        /**
+         * Basculer l'ouverture/fermeture du menu
+         */
+        function toggleLanguageMenu() {
+            const menu = document.getElementById('languageDropdownMenu');
+            const backdrop = document.getElementById('languageMenuBackdrop');
+            
+            const isOpen = menu.classList.contains('active');
+            
+            if (isOpen) {
+                closeLanguageMenu();
+            } else {
+                menu.classList.add('active');
+                backdrop.classList.add('active');
+            }
         }
         
-        function changeLanguage(lang) {
+        /**
+         * Fermer le menu de langue
+         */
+        function closeLanguageMenu() {
+            const menu = document.getElementById('languageDropdownMenu');
+            const backdrop = document.getElementById('languageMenuBackdrop');
+            
+            menu.classList.remove('active');
+            backdrop.classList.remove('active');
+        }
+        
+        /**
+         * Sélectionner une langue depuis le menu
+         */
+        function selectLanguageFromMenu(lang) {
             const langCodes = ['ar', 'fr', 'en', 'it'];
             if (!langCodes.includes(lang)) return;
             
-            const langButtons = document.querySelectorAll('.lang-dropdown button');
-            langButtons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            // Mettre à jour les indicateurs visuels
+            const menuItems = document.querySelectorAll('.language-menu-item');
+            menuItems.forEach(item => item.classList.remove('active'));
+            event.target.closest('.language-menu-item').classList.add('active');
+            
+            // Mettre à jour les boutons en haut
+            const toggleButtons = document.querySelectorAll('.lang-toggle-btn');
+            toggleButtons.forEach(btn => btn.classList.remove('active'));
+            const langMap = { 'ar': 0, 'fr': 1, 'en': 2, 'it': 3 };
+            if (langMap[lang] !== undefined) {
+                toggleButtons[langMap[lang]].classList.add('active');
+            }
+            
+            currentLanguage = lang;
+            closeLanguageMenu();
+            changeLanguage(lang);
+        }
+        
+        /**
+         * Changer la langue (requête AJAX)
+         */
+        function changeLanguage(lang) {
+            const langCodes = ['ar', 'fr', 'en', 'it'];
+            if (!langCodes.includes(lang)) return;
             
             fetch(window.location.href, {
                 method: 'POST',
@@ -1085,6 +1523,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (data.success) location.reload();
             })
             .catch(error => console.error('Erreur:', error));
+        }
+        
+        // Fermer le menu au clic sur le backdrop
+        document.addEventListener('click', function(event) {
+            const selector = document.getElementById('languageSelector');
+            const menu = document.getElementById('languageDropdownMenu');
+            
+            if (selector && menu.classList.contains('active')) {
+                if (!selector.contains(event.target)) {
+                    closeLanguageMenu();
+                }
+            }
+        });
+        
+        // Fermer le menu avec la touche Escape
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeLanguageMenu();
+            }
+        });
+        
+        // ═══════════════════════════════════════════════════════════════
+        // AUTRES FONCTIONS
+        // ═══════════════════════════════════════════════════════════════
+        
+        function generateQRCode() {
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+            const mobileUrl = window.location.href.split('?')[0];
+            new QRCode(qrContainer, {
+                text: mobileUrl,
+                width: 200,
+                height: 200,
+                colorDark: '#5a67d8',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
         }
         
         function updateProgress(stepNumber) {
@@ -1112,13 +1587,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             buttons.forEach(btn => btn.classList.remove('active'));
             event.target.closest('.lang-toggle-btn').classList.add('active');
             
-            const langButtons = document.querySelectorAll('.lang-dropdown button');
-            langButtons.forEach(btn => btn.classList.remove('active'));
+            const menuItems = document.querySelectorAll('.language-menu-item');
+            menuItems.forEach(item => item.classList.remove('active'));
             const langMap = { 'ar': 0, 'fr': 1, 'en': 2, 'it': 3 };
             if (langMap[lang] !== undefined) {
-                langButtons[langMap[lang]].classList.add('active');
+                menuItems[langMap[lang]].classList.add('active');
             }
             
+            currentLanguage = lang;
             changeLanguage(lang);
         }
         
@@ -1171,7 +1647,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Disable button during submission
             const submitBtn = event.target;
             submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.5';
+            submitBtn.style.opacity = '0.6';
             
             fetch(window.location.href, {
                 method: 'POST',
@@ -1250,6 +1726,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.addEventListener('DOMContentLoaded', function() {
             generateQRCode();
             updateProgress(1);
+            
+            // Initialiser le menu avec la bonne langue active
+            const langMap = { 'ar': 0, 'fr': 1, 'en': 2, 'it': 3 };
+            const langIndex = langMap[currentLanguage];
+            if (langIndex !== undefined) {
+                const menuItems = document.querySelectorAll('.language-menu-item');
+                menuItems.forEach((item, index) => {
+                    if (index === langIndex) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            }
             
             // Add keyboard navigation
             document.addEventListener('keypress', function(event) {

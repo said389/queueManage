@@ -10,7 +10,7 @@ class OperatorPage extends Page {
     private $operator = null;
     private $desk = null;
     private $ticket_served = null;
-    private $td_served = array();
+    private $services_served = array();
     private $message = '';
     private $pauseButtonEnabled = true;
     private $disableNextButton = false;
@@ -20,28 +20,32 @@ class OperatorPage extends Page {
     }
 
     public function execute() {
-        // ✅ Récupérer les domaines depuis POST
-        $this->td_served = gfPostVar( 'td_served', array() );
+        // ✅ Récupérer les services depuis POST
+        $this->services_served = gfPostVar( 'services_served', array() );
         
-        // Assurer que td_served est un array
-        if ( !is_array( $this->td_served ) ) {
-            $this->td_served = array();
+        // Assurer que services_served est un array
+        if ( !is_array( $this->services_served ) ) {
+            $this->services_served = array();
         }
         
         // Sauvegarder en session
-        $_SESSION['td_served'] = $this->td_served;
+        $_SESSION['services_served'] = $this->services_served;
 
         // ✅ Si "next" a été cliqué
         if ( isset( $_POST['next'] ) ) {
-            // Vérifier si au moins un domaine est sélectionné
-            if ( empty( $this->td_served ) ) {
-                $this->message = "Erreur: sélectionnez au moins un domaine thématique.";
+            // Vérifier si au moins un service est sélectionné
+            if ( empty( $this->services_served ) ) {
+                $this->message = "⚠️ Erreur: sélectionnez au moins un service.";
+                error_log("No service selected");
                 return true;
             }
+
+            error_log("Services selected: " . json_encode($this->services_served));
 
             // Handle served ticket
             $served = Ticket::fromDatabaseByDesk( $this->getDesk()->getNumber() );
             if ( $served ) {
+                error_log("Previous ticket found: " . $served->getTextString());
                 $stats = TicketStats::newFromTicket( $served );
                 $served->delete();
                 if ( !$stats->save() ) {
@@ -49,28 +53,32 @@ class OperatorPage extends Page {
                 }
             }
 
-            // Call next ticket
+            // Call next ticket based on selected services
             try {
-                $ticket = Ticket::serveNextTicket(
-                    $this->td_served,
+                error_log("Calling serveNextTicketByServices");
+                $ticket = $this->serveNextTicketByServices(
+                    $this->services_served,
                     $this->getOperator()->getCode(),
                     $this->getDesk()->getNumber()
                 );
                 
                 if ( !$ticket ) {
-                    $this->message = "Aucun ticket à appeler";
+                    $this->message = "ℹ️ Aucun ticket à appeler pour les services sélectionnés";
+                    error_log("No ticket found for services: " . json_encode($this->services_served));
                     $this->pauseButtonEnabled = false;
                     $this->ticket_served = null;
                     return true;
                 }
                 
+                error_log("Ticket served: " . json_encode($ticket));
                 $this->ticket_served = $ticket;
                 $this->disableNextButton = true;
                 $this->pauseButtonEnabled = true;
                 return true;
                 
             } catch ( Exception $e ) {
-                $this->message = "Erreur: " . $e->getMessage();
+                $this->message = "❌ Erreur: " . $e->getMessage();
+                error_log("Error in serveNextTicketByServices: " . $e->getMessage());
                 return true;
             }
         }
@@ -86,11 +94,11 @@ class OperatorPage extends Page {
     }
     
     public function afterPermissionCheck() {
-        $this->td_served = gfSessionVar( 'td_served', array() );
+        $this->services_served = gfSessionVar( 'services_served', array() );
         
-        // Assurer que td_served est un array
-        if ( !is_array( $this->td_served ) ) {
-            $this->td_served = array();
+        // Assurer que services_served est un array
+        if ( !is_array( $this->services_served ) ) {
+            $this->services_served = array();
         }
         
         $this->ticket_served = Ticket::fromDatabaseByOperator(
@@ -119,18 +127,27 @@ class OperatorPage extends Page {
     private function getPageContent() {
         global $gvPath, $gvAllowPause;
 
-        $servedText = $this->ticket_served ? $this->ticket_served->getTextString() : 'Aucun';
+        // ✅ Gérer l'affichage du ticket de manière robuste
+        $servedText = 'Aucun';
+        if ($this->ticket_served) {
+            if (method_exists($this->ticket_served, 'getTextString')) {
+                $servedText = $this->ticket_served->getTextString();
+            } else if (isset($this->ticket_served->ticket_number)) {
+                $servedText = htmlspecialchars($this->ticket_served->ticket_number);
+            }
+        }
+        
         $tableBody = $this->getTableBody();
         $operator = $this->getOperator();
         $desk = $this->getDesk();
         
-        // Sécuriser td_served
-        $tdServedArray = is_array( $this->td_served ) ? $this->td_served : array();
-        $tdServedText = !empty( $tdServedArray ) ? implode( ', ', $tdServedArray ) : 'Aucun';
+        // Sécuriser services_served
+        $servicesServedArray = is_array( $this->services_served ) ? $this->services_served : array();
+        $servicesServedText = !empty( $servicesServedArray ) ? implode( ', ', $servicesServedArray ) : 'Aucun';
         
         $messageClass = '';
         if ( $this->message ) {
-            $messageClass = strpos($this->message, 'Erreur') !== false ? 'error' : 'info';
+            $messageClass = strpos($this->message, 'Erreur') !== false || strpos($this->message, '❌') !== false ? 'error' : 'info';
         }
         $pMessage = $this->message ? "<div class=\"alert alert-$messageClass\"><i class=\"fas fa-exclamation-circle\"></i> {$this->message}</div>" : '';
         
@@ -189,8 +206,8 @@ $nextButtonBlock
             <div class="info-item">
                 <i class="fas fa-layer-group"></i>
                 <div>
-                    <span class="info-label">Domaines servis</span>
-                    <span class="info-value">$tdServedText</span>
+                    <span class="info-label">Services servis</span>
+                    <span class="info-value">$servicesServedText</span>
                 </div>
             </div>
         </div>
@@ -215,9 +232,9 @@ $nextButtonBlock
                     $pMessage
                 </div>
 
-                <!-- Topical Domains Selection -->
+                <!-- Services Selection (from tickets table) -->
                 <div class="domains-section card">
-                    <h3>Sélectionner les domaines thématiques à servir</h3>
+                    <h3><i class="fas fa-briefcase"></i> Sélectionner les services à servir</h3>
                     <div class="domains-grid">
                         $tableBody
                     </div>
@@ -225,7 +242,7 @@ $nextButtonBlock
 
                 <!-- Control Buttons -->
                 <div class="controls-section card">
-                    <h3>Contrôles</h3>
+                    <h3><i class="fas fa-sliders-h"></i> Contrôles</h3>
                     <div class="button-group">
                         <button type="submit" name="next" value="1" class="btn btn-primary btn-large$disabledClass">
                             <i class="fas fa-arrow-right"></i> Prochain ticket
@@ -255,7 +272,6 @@ HTML;
 
     private function getOperator() {
         if ( !$this->operator ) {
-            // Get from session
             if ( isset( $_SESSION['operator'] ) ) {
                 $this->operator = $_SESSION['operator'];
             } else if ( isset( $_SESSION['op_code'] ) ) {
@@ -279,37 +295,366 @@ HTML;
         }
         return $this->desk;
     }
-    
-    private function getCheckBox( $td_code, $text, $queueLength, $checked = false ) {
-        $checked = $checked ? ' checked' : '';
-        return "<input type=\"checkbox\" name=\"td_served[]\" value=\"$td_code\" class=\"domain-checkbox\"$checked /><span class=\"domain-label\">$text <span class=\"queue-count\">($queueLength)</span></span>";
-    }
 
-    private function getTableBody() {
-        $topicalDomains = TopicalDomain::fromDatabaseCompleteList( true );
-        $tableBody = '';
+    /**
+     * ✅ Récupère la connexion à la base de données
+     */
+    private function getDatabase() {
+        // Essayer d'accéder à la BD via différentes méthodes
+        $db = null;
         
-        // Assurer que td_served est un array
-        $td_served = is_array( $this->td_served ) ? $this->td_served : array();
-        
-        foreach ( $topicalDomains as $td ) {
-            $description = $td->getCode() . " - " . htmlspecialchars( $td->getName() );
-            $queueLength = Ticket::getNumberTicketInQueue( $td->getCode() );
-            $checkbox = $this->getCheckBox(
-                $td->getCode(),
-                $description,
-                $queueLength,
-                in_array( $td->getCode(), $td_served )
-            );
-            
-            $tableBody .= <<<HTML
-            <label class="domain-item">
-                $checkbox
-            </label>
-HTML;
+        // Méthode 1: Variable globale standard
+        if (isset($GLOBALS['gvSQLDatabase']) && $GLOBALS['gvSQLDatabase']) {
+            $db = $GLOBALS['gvSQLDatabase'];
+            error_log("Database found via gvSQLDatabase");
+            return $db;
         }
         
-        return $tableBody;
+        // Méthode 2: Variable globale alternative
+        if (isset($GLOBALS['mysqli']) && $GLOBALS['mysqli']) {
+            $db = $GLOBALS['mysqli'];
+            error_log("Database found via mysqli");
+            return $db;
+        }
+        
+        // Méthode 3: Chercher une instance de connexion BD
+        if (function_exists('getDatabaseConnection')) {
+            $db = getDatabaseConnection();
+            error_log("Database found via getDatabaseConnection function");
+            return $db;
+        }
+        
+        // Méthode 4: Essayer d'accéder à une classe Database
+        if (class_exists('Database')) {
+            if (method_exists('Database', 'getInstance')) {
+                $db = Database::getInstance();
+                error_log("Database found via Database::getInstance");
+                return $db;
+            }
+            if (method_exists('Database', 'getConnection')) {
+                $db = Database::getConnection();
+                error_log("Database found via Database::getConnection");
+                return $db;
+            }
+        }
+        
+        error_log("No database connection found");
+        return null;
+    }
+
+    /**
+     * ✅ Récupère les services distincts et leurs files d'attente
+     */
+    private function getTableBody() {
+        // Initialiser les variables
+        $services = array();
+        $queueData = array();
+        $tableBody = '';
+        
+        try {
+            // Obtenir la connexion BD
+            $db = $this->getDatabase();
+            
+            if (!$db) {
+                throw new Exception("Impossible de se connecter à la base de données");
+            }
+            
+            // Récupérer les services distincts
+            $query = "SELECT DISTINCT service FROM tickets 
+                      WHERE service IS NOT NULL AND service != '' 
+                      ORDER BY service ASC";
+            
+            error_log("Executing query: " . $query);
+            
+            // Vérifier si c'est PDO ou MySQLi
+            if ($db instanceof PDO) {
+                // PDO
+                error_log("Using PDO connection");
+                $result = $db->query($query);
+                
+                if (!$result) {
+                    throw new Exception("Erreur SQL PDO");
+                }
+                
+                $services = $result->fetchAll(PDO::FETCH_ASSOC);
+            } else {
+                // MySQLi
+                error_log("Using MySQLi connection");
+                $result = $db->query($query);
+                
+                if (!$result) {
+                    throw new Exception("Erreur SQL MySQLi: " . $db->error);
+                }
+                
+                while ($row = $result->fetch_assoc()) {
+                    if (!empty($row['service'])) {
+                        $services[] = $row;
+                    }
+                }
+            }
+            
+            // Filtrer les services vides
+            $services = array_filter($services, function($s) {
+                return !empty($s['service']);
+            });
+            
+            foreach ($services as $service) {
+                error_log("Found service: " . $service['service']);
+            }
+            
+            // Si pas de services, retourner un message
+            if (empty($services)) {
+                error_log("No services found in tickets table");
+                return '<p style="text-align: center; color: #999; padding: 20px;">Aucun service disponible. Veuillez ajouter des tickets d\'abord.</p>';
+            }
+            
+            error_log("Total services found: " . count($services));
+            
+            // ✅ Récupérer TOUS les tickets (pas seulement 'waiting')
+            $countQuery = "SELECT service, COUNT(*) as cnt FROM tickets 
+                           WHERE service IS NOT NULL 
+                           GROUP BY service";
+            
+            error_log("Executing count query: " . $countQuery);
+            
+            if ($db instanceof PDO) {
+                // PDO
+                $countResult = $db->query($countQuery);
+                
+                if ($countResult) {
+                    $countRows = $countResult->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($countRows as $row) {
+                        $serviceName = trim($row['service']);
+                        $queueData[$serviceName] = $row['cnt'];
+                        error_log("Service: " . $serviceName . " -> " . $row['cnt'] . " tickets");
+                    }
+                }
+            } else {
+                // MySQLi
+                $countResult = $db->query($countQuery);
+                
+                if ($countResult) {
+                    while ($row = $countResult->fetch_assoc()) {
+                        $serviceName = trim($row['service']);
+                        $queueData[$serviceName] = $row['cnt'];
+                        error_log("Service: " . $serviceName . " -> " . $row['cnt'] . " tickets");
+                    }
+                }
+            }
+            
+            // Générer le HTML
+            $services_served = is_array($this->services_served) ? $this->services_served : array();
+            
+            foreach ($services as $service) {
+                $serviceName = trim($service['service']);
+                $queueLength = isset($queueData[$serviceName]) ? $queueData[$serviceName] : 0;
+                $isChecked = in_array($serviceName, $services_served);
+                
+                $checkedAttr = $isChecked ? ' checked' : '';
+                $escapedService = htmlspecialchars($serviceName, ENT_QUOTES, 'UTF-8');
+                
+                $tableBody .= <<<HTML
+            <label class="service-item">
+                <input type="checkbox" name="services_served[]" value="$escapedService" class="service-checkbox"$checkedAttr />
+                <span class="service-label">
+                    $escapedService 
+                    <span class="queue-count">($queueLength)</span>
+                </span>
+            </label>
+HTML;
+            }
+            
+            return $tableBody;
+            
+        } catch (Exception $e) {
+            error_log("getTableBody Exception: " . $e->getMessage());
+            return '<p style="color: #c33; padding: 20px;">❌ Erreur: ' . htmlspecialchars($e->getMessage()) . '</p>';
+        }
+    }
+
+    /**
+     * ✅ Appelle le prochain ticket selon les services sélectionnés
+     */
+    private function serveNextTicketByServices($services, $operator_code, $desk_number) {
+        if (empty($services) || !is_array($services)) {
+            error_log("serveNextTicketByServices: No services provided");
+            return null;
+        }
+        
+        try {
+            // Obtenir la connexion BD
+            $db = $this->getDatabase();
+            
+            if (!$db) {
+                throw new Exception("Impossible de se connecter à la base de données");
+            }
+            
+            error_log("serveNextTicketByServices called with services: " . json_encode($services));
+            error_log("operator_code: $operator_code, desk_number: $desk_number");
+            
+            // ✅ Statuts valides pour chercher les tickets
+            $validStatuses = array('waiting', 'standard', 'pregnant', 'disability', 'serving');
+            
+            // Déterminer le type de BD et construire la requête
+            if ($db instanceof PDO) {
+                // PDO - Utiliser des prepared statements
+                error_log("Using PDO connection");
+                $placeholders = array_fill(0, count($services), '?');
+                $serviceList = implode(",", $placeholders);
+                
+                $statusPlaceholders = array_fill(0, count($validStatuses), '?');
+                $statusList = implode(",", $statusPlaceholders);
+                
+                $query = "SELECT * FROM tickets 
+                          WHERE service IN ($serviceList) 
+                          AND status IN ($statusList)
+                          ORDER BY created_at ASC 
+                          LIMIT 1";
+                
+                error_log("Executing PDO query: " . $query);
+                
+                $stmt = $db->prepare($query);
+                
+                // Lier les paramètres de service
+                foreach ($services as $key => $service) {
+                    $trimmedService = trim($service);
+                    $stmt->bindValue($key + 1, $trimmedService, PDO::PARAM_STR);
+                    error_log("Bound service[$key]: '$trimmedService'");
+                }
+                
+                // Lier les paramètres de status
+                foreach ($validStatuses as $key => $status) {
+                    $stmt->bindValue($key + count($services) + 1, $status, PDO::PARAM_STR);
+                    error_log("Bound status[$key]: '$status'");
+                }
+                
+                $stmt->execute();
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($row) {
+                    error_log("Found ticket with PDO: " . json_encode($row));
+                    
+                    // Mettre à jour le statut du ticket
+                    $ticket_id = (int)$row['id'];
+                    $update_query = "UPDATE tickets SET status = 'serving' WHERE id = ?";
+                    
+                    error_log("Updating ticket ID $ticket_id with query: " . $update_query);
+                    
+                    $updateStmt = $db->prepare($update_query);
+                    $updateStmt->bindValue(1, $ticket_id, PDO::PARAM_INT);
+                    
+                    if (!$updateStmt->execute()) {
+                        error_log("PDO Update failed");
+                        throw new Exception("Erreur update PDO");
+                    }
+                    
+                    error_log("Ticket updated successfully");
+                    
+                    // Créer et retourner l'objet Ticket
+                    if (method_exists('Ticket', 'fromArray')) {
+                        error_log("Using Ticket::fromArray");
+                        return Ticket::fromArray($row);
+                    } else {
+                        error_log("Creating stdClass ticket object");
+                        $ticket = new stdClass();
+                        $ticket->id = $row['id'];
+                        $ticket->ticket_number = $row['ticket_number'];
+                        $ticket->name = $row['name'];
+                        $ticket->phone = $row['phone'];
+                        $ticket->status = $row['status'];
+                        $ticket->service = $row['service'];
+                        $ticket->created_at = $row['created_at'];
+                        
+                        return $ticket;
+                    }
+                } else {
+                    error_log("No row found with PDO");
+                }
+            } else {
+                // MySQLi
+                error_log("Using MySQLi connection");
+                $escapedServices = array();
+                foreach ($services as $service) {
+                    $trimmed = trim($service);
+                    $escaped = $db->real_escape_string($trimmed);
+                    $escapedServices[] = "'" . $escaped . "'";
+                    error_log("Escaped service: '$trimmed' -> '$escaped'");
+                }
+                
+                $escapedStatuses = array();
+                foreach ($validStatuses as $status) {
+                    $escaped = $db->real_escape_string($status);
+                    $escapedStatuses[] = "'" . $escaped . "'";
+                    error_log("Escaped status: '$status' -> '$escaped'");
+                }
+                
+                $serviceList = implode(",", $escapedServices);
+                $statusList = implode(",", $escapedStatuses);
+                
+                error_log("Service list: " . $serviceList);
+                error_log("Status list: " . $statusList);
+                
+                $query = "SELECT * FROM tickets 
+                          WHERE service IN ($serviceList) 
+                          AND status IN ($statusList)
+                          ORDER BY created_at ASC 
+                          LIMIT 1";
+                
+                error_log("Executing MySQLi query: " . $query);
+                
+                $result = $db->query($query);
+                
+                if (!$result) {
+                    error_log("MySQLi query failed: " . $db->error);
+                    throw new Exception("Erreur SQL MySQLi: " . $db->error);
+                }
+                
+                if ($result->num_rows > 0) {
+                    $row = $result->fetch_assoc();
+                    error_log("Found ticket with MySQLi: " . json_encode($row));
+                    
+                    // Mettre à jour le statut du ticket
+                    $ticket_id = (int)$row['id'];
+                    $update_query = "UPDATE tickets SET status = 'serving' WHERE id = $ticket_id";
+                    
+                    error_log("Updating ticket ID $ticket_id with query: " . $update_query);
+                    
+                    if (!$db->query($update_query)) {
+                        error_log("MySQLi Update failed: " . $db->error);
+                        throw new Exception("Erreur update MySQLi: " . $db->error);
+                    }
+                    
+                    error_log("Ticket updated successfully");
+                    
+                    // Créer et retourner l'objet Ticket
+                    if (method_exists('Ticket', 'fromArray')) {
+                        error_log("Using Ticket::fromArray");
+                        return Ticket::fromArray($row);
+                    } else {
+                        error_log("Creating stdClass ticket object");
+                        $ticket = new stdClass();
+                        $ticket->id = $row['id'];
+                        $ticket->ticket_number = $row['ticket_number'];
+                        $ticket->name = $row['name'];
+                        $ticket->phone = $row['phone'];
+                        $ticket->status = $row['status'];
+                        $ticket->service = $row['service'];
+                        $ticket->created_at = $row['created_at'];
+                        
+                        return $ticket;
+                    }
+                } else {
+                    error_log("No row found with MySQLi");
+                }
+            }
+            
+            error_log("No tickets found for services: " . implode(", ", $services));
+            return null;
+            
+        } catch (Exception $e) {
+            error_log("serveNextTicketByServices Exception: " . $e->getMessage());
+            throw new Exception("Erreur lors de l'appel du ticket: " . $e->getMessage());
+        }
     }
 
     private function getDesignCSS() {
@@ -629,14 +974,14 @@ HTML;
             cursor: not-allowed;
         }
 
-        /* Domains Grid */
+        /* Services Grid */
         .domains-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 16px;
         }
 
-        .domain-item {
+        .service-item {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -648,25 +993,25 @@ HTML;
             transition: all 0.3s ease;
         }
 
-        .domain-item:hover {
+        .service-item:hover {
             background: #f8f9fa;
             border-color: #6C63FF;
             box-shadow: 0 4px 12px rgba(108,99,255,0.1);
         }
 
-        .domain-checkbox {
+        .service-checkbox {
             width: 18px;
             height: 18px;
             cursor: pointer;
             accent-color: #6C63FF;
         }
 
-        .domain-checkbox:checked + .domain-label {
+        .service-checkbox:checked + .service-label {
             color: #6C63FF;
             font-weight: 600;
         }
 
-        .domain-label {
+        .service-label {
             flex: 1;
             font-weight: 500;
             color: #1a1a2e;
@@ -804,7 +1149,7 @@ HTML;
                 gap: 10px;
             }
 
-            .domain-item {
+            .service-item {
                 padding: 12px;
                 font-size: 13px;
             }

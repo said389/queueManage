@@ -23,6 +23,18 @@ function main() {
 
     gfDebug( "RequestUri: $requestUri" );
     
+    // ✅ Route directe pour l'Espace Client (accessible sans authentification)
+    if ( $requestUri === 'client-space' || $requestUri === 'client-space/') {
+        // Utiliser le chemin correct avec dirname(__FILE__)
+        $clientSpacePath = dirname(__FILE__) . '/includes/pages/ClientSpace.php';
+        if ( file_exists( $clientSpacePath ) ) {
+            include $clientSpacePath;
+        } else {
+            die( 'Erreur: Le fichier ClientSpace.php n\'a pas été trouvé à ' . $clientSpacePath );
+        }
+        return;
+    }
+    
     Session::start();
     $userLevel = $_SESSION['userLevel'];
     

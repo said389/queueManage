@@ -77,6 +77,8 @@ class Autoloader {
         # Pages / globalServer
         "GsHomePage" => "pages/globalServer/GsHomePage.php",
         "GsSearch" => "pages/globalServer/GsSearch.php",
+        # Pages / client
+        "ClientPage" => "pages/client/ClientPage.php",
         # Pages / web
         "WebCheckPhone" => "pages/web/WebCheckPhone.php",
         "WebComplete" => "pages/web/WebComplete.php",

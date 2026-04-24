@@ -48,6 +48,8 @@ class PageRouter {
         "web/complete" => "WebComplete",
         "web/insertPhone" => "WebInsertPhone",
         "web/tdSelection" => "WebTdSelection",
+        # Client (Espace Client kiosk)
+        "client" => "ClientPage",
     );
     
     public static function getClassOrRedirect( $pageRequested ) {

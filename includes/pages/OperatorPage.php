@@ -1,9 +1,10 @@
 <?php
 
 /**
- * Description of OperatorPage
+ * Description of OperatorPage - Version Améliorée avec Notifications
  *
  * @author sergio
+ * @improved with real-time notifications and modern design
  */
 class OperatorPage extends Page {
 
@@ -16,6 +17,7 @@ class OperatorPage extends Page {
     private $selected_ticket_id = null;
     private $pending_tickets = array();
     private $is_ajax = false;
+    private $selected_statuses = array();
     
     public function canUse( $userLevel ) {
         return $userLevel == Page::OPERATOR_USER;
@@ -123,6 +125,7 @@ class OperatorPage extends Page {
             $this->services_served = array();
             unset( $_SESSION['selected_ticket_id'] );
             unset( $_SESSION['services_served'] );
+            unset( $_SESSION['selected_statuses'] );
             return true;
         }
 
@@ -150,9 +153,91 @@ class OperatorPage extends Page {
                 return $this->ajaxBackToList();
             case 'back_to_services':
                 return $this->ajaxBackToServices();
+            case 'filter_tickets':
+                return $this->ajaxFilterTickets();
+            case 'check_new_tickets':
+                return $this->ajaxCheckNewTickets();
             default:
                 $this->jsonResponse(false, 'Action inconnue', 400);
                 return false;
+        }
+    }
+    
+    /**
+     * AJAX: Vérifier les nouveaux tickets
+     */
+    private function ajaxCheckNewTickets() {
+        error_log("=== ajaxCheckNewTickets() START ===");
+        
+        try {
+            $lastCheck = (int)gfPostVar('lastCheck', 0);
+            $services = gfSessionVar('services_served', array());
+            
+            if (empty($services)) {
+                $this->jsonResponse(true, 'Pas de services', 200, array('newTickets' => array()));
+                return false;
+            }
+            
+            $db = $this->getDatabase();
+            if (!$db) {
+                throw new Exception("Impossible de se connecter à la base de données");
+            }
+            
+            $newTickets = array();
+            
+            if ($db instanceof PDO) {
+                $placeholders = array_fill(0, count($services), '?');
+                $serviceList = implode(",", $placeholders);
+                
+                $query = "SELECT id, ticket_number, name, service, status, created_at 
+                          FROM tickets 
+                          WHERE service IN ($serviceList) 
+                          AND UNIX_TIMESTAMP(created_at) > ?
+                          AND status IN ('waiting', 'standard', 'pregnant', 'disability')
+                          ORDER BY created_at DESC LIMIT 5";
+                
+                $stmt = $db->prepare($query);
+                
+                $paramIndex = 1;
+                foreach ($services as $service) {
+                    $stmt->bindValue($paramIndex, trim($service), PDO::PARAM_STR);
+                    $paramIndex++;
+                }
+                $stmt->bindValue($paramIndex, $lastCheck, PDO::PARAM_INT);
+                $stmt->execute();
+                $newTickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } else {
+                $escapedServices = array();
+                foreach ($services as $service) {
+                    $escapedServices[] = "'" . $db->real_escape_string(trim($service)) . "'";
+                }
+                $serviceList = implode(",", $escapedServices);
+                
+                $query = "SELECT id, ticket_number, name, service, status, created_at 
+                          FROM tickets 
+                          WHERE service IN ($serviceList) 
+                          AND UNIX_TIMESTAMP(created_at) > $lastCheck
+                          AND status IN ('waiting', 'standard', 'pregnant', 'disability')
+                          ORDER BY created_at DESC LIMIT 5";
+                
+                $result = $db->query($query);
+                while ($row = $result->fetch_assoc()) {
+                    $newTickets[] = $row;
+                }
+            }
+            
+            error_log("Found " . count($newTickets) . " new tickets");
+            
+            $this->jsonResponse(true, 'Vérification effectuée', 200, array(
+                'newTickets' => $newTickets,
+                'timestamp' => time()
+            ));
+            return false;
+            
+        } catch (Exception $e) {
+            error_log("ajaxCheckNewTickets Exception: " . $e->getMessage());
+            $this->jsonResponse(false, 'Erreur: ' . $e->getMessage(), 500);
+            return false;
         }
     }
     
@@ -172,21 +257,71 @@ class OperatorPage extends Page {
             
             $_SESSION['services_served'] = $services;
             
-            $tickets = $this->getPendingTicketsByServices($services);
+            // Initialiser avec tous les statuts
+            $statuses = array('waiting', 'standard', 'pregnant', 'disability');
+            $_SESSION['selected_statuses'] = $statuses;
+            $this->selected_statuses = $statuses;
+            
+            $tickets = $this->getPendingTicketsByServices($services, $statuses);
             error_log("Found " . count($tickets) . " tickets");
             
             // Générer le HTML de la liste
-            $ticketsHtml = $this->generateTicketsListHtml($tickets);
+            $ticketsHtml = $this->generateTicketsListHtml($tickets, $statuses);
             
             $this->jsonResponse(true, 'Tickets chargés', 200, array(
                 'ticketsHtml' => $ticketsHtml,
                 'count' => count($tickets),
-                'services' => $services
+                'services' => $services,
+                'timestamp' => time()
             ));
             return false;
             
         } catch (Exception $e) {
             error_log("ajaxGetTickets Exception: " . $e->getMessage());
+            $this->jsonResponse(false, 'Erreur: ' . $e->getMessage(), 500);
+            return false;
+        }
+    }
+
+    /**
+     * AJAX: Filtre les tickets par statut
+     */
+    private function ajaxFilterTickets() {
+        error_log("=== ajaxFilterTickets() START ===");
+        
+        try {
+            $statuses = gfPostVar('statuses', array());
+            error_log("Statuses received: " . json_encode($statuses));
+            
+            if (!is_array($statuses)) {
+                $statuses = array();
+            }
+            
+            // Si aucun statut sélectionné, utiliser tous
+            if (empty($statuses)) {
+                $statuses = array('waiting', 'standard', 'pregnant', 'disability');
+            }
+            
+            $_SESSION['selected_statuses'] = $statuses;
+            $this->selected_statuses = $statuses;
+            
+            $services = gfSessionVar('services_served', array());
+            $tickets = $this->getPendingTicketsByServices($services, $statuses);
+            
+            error_log("Found " . count($tickets) . " tickets after filter");
+            
+            // Générer le HTML de la liste
+            $ticketsHtml = $this->generateTicketsListHtml($tickets, $statuses);
+            
+            $this->jsonResponse(true, 'Tickets filtrés', 200, array(
+                'ticketsHtml' => $ticketsHtml,
+                'count' => count($tickets),
+                'statuses' => $statuses
+            ));
+            return false;
+            
+        } catch (Exception $e) {
+            error_log("ajaxFilterTickets Exception: " . $e->getMessage());
             $this->jsonResponse(false, 'Erreur: ' . $e->getMessage(), 500);
             return false;
         }
@@ -273,7 +408,8 @@ class OperatorPage extends Page {
             
             // Récupérer les tickets restants
             $services = gfSessionVar('services_served', array());
-            $remainingTickets = $this->getPendingTicketsByServices($services);
+            $statuses = gfSessionVar('selected_statuses', array('waiting', 'standard', 'pregnant', 'disability'));
+            $remainingTickets = $this->getPendingTicketsByServices($services, $statuses);
             
             $this->jsonResponse(true, 'Ticket traité avec succès', 200, array(
                 'remainingCount' => count($remainingTickets)
@@ -297,9 +433,10 @@ class OperatorPage extends Page {
             unset($_SESSION['selected_ticket_id']);
             
             $services = gfSessionVar('services_served', array());
-            $tickets = $this->getPendingTicketsByServices($services);
+            $statuses = gfSessionVar('selected_statuses', array('waiting', 'standard', 'pregnant', 'disability'));
+            $tickets = $this->getPendingTicketsByServices($services, $statuses);
             
-            $ticketsHtml = $this->generateTicketsListHtml($tickets);
+            $ticketsHtml = $this->generateTicketsListHtml($tickets, $statuses);
             
             $this->jsonResponse(true, 'Retour à la liste', 200, array(
                 'ticketsHtml' => $ticketsHtml,
@@ -323,6 +460,7 @@ class OperatorPage extends Page {
         try {
             unset($_SESSION['selected_ticket_id']);
             unset($_SESSION['services_served']);
+            unset($_SESSION['selected_statuses']);
             
             $this->jsonResponse(true, 'Retour aux services', 200);
             return false;
@@ -335,13 +473,37 @@ class OperatorPage extends Page {
     }
     
     /**
-     * Génère le HTML de la liste des tickets
+     * Génère le HTML de la liste des tickets avec filtre de statut
      */
-    private function generateTicketsListHtml($tickets) {
+    private function generateTicketsListHtml($tickets, $statuses = array()) {
+        if (empty($statuses)) {
+            $statuses = array('waiting', 'standard', 'pregnant', 'disability');
+        }
+
+        // Construire le HTML du filtre
+        $filterHtml = '<div class="filter-section">'
+            . '<h3><i class="fas fa-filter"></i> Filtrer par statut</h3>'
+            . '<div class="filter-checkboxes">'
+            . '<label class="filter-item">'
+            . '<input type="checkbox" name="status_filter" value="standard" class="status-filter-checkbox"' . (in_array('standard', $statuses) ? ' checked' : '') . ' />'
+            . '<span class="filter-label"><i class="fas fa-circle"></i> Standard</span>'
+            . '</label>'
+            . '<label class="filter-item">'
+            . '<input type="checkbox" name="status_filter" value="pregnant" class="status-filter-checkbox"' . (in_array('pregnant', $statuses) ? ' checked' : '') . ' />'
+            . '<span class="filter-label"><i class="fas fa-heart"></i> Femme enceinte</span>'
+            . '</label>'
+            . '<label class="filter-item">'
+            . '<input type="checkbox" name="status_filter" value="disability" class="status-filter-checkbox"' . (in_array('disability', $statuses) ? ' checked' : '') . ' />'
+            . '<span class="filter-label"><i class="fas fa-wheelchair"></i> PMR/Handicap</span>'
+            . '</label>'
+            . '</div>'
+            . '</div>';
+
         if (empty($tickets)) {
             return '<div class="ticket-section card">'
-                . '<div class="alert alert-info">'
-                . '<i class="fas fa-info-circle"></i> Aucun ticket en attente pour les services sélectionnés'
+                . $filterHtml
+                . '<div class="alert alert-info" style="margin-top: 20px;">'
+                . '<i class="fas fa-info-circle"></i> Aucun ticket en attente pour les services et statuts sélectionnés'
                 . '</div>'
                 . '</div>';
         }
@@ -381,7 +543,8 @@ class OperatorPage extends Page {
         }
         
         return '<div class="ticket-section card">'
-            . '<div class="ticket-header">'
+            . $filterHtml
+            . '<div class="ticket-header" style="margin-top: 24px;">'
             . '<h2><i class="fas fa-list"></i> Sélectionner un ticket à traiter (' . count($tickets) . ' en attente)</h2>'
             . '</div>'
             . '<div class="tickets-list">'
@@ -462,10 +625,15 @@ class OperatorPage extends Page {
         error_log("=== OperatorPage afterPermissionCheck() START ===");
         
         $this->services_served = gfSessionVar( 'services_served', array() );
+        $this->selected_statuses = gfSessionVar( 'selected_statuses', array('waiting', 'standard', 'pregnant', 'disability') );
         
         // Assurer que services_served est un array
         if ( !is_array( $this->services_served ) ) {
             $this->services_served = array();
+        }
+        
+        if ( !is_array( $this->selected_statuses ) ) {
+            $this->selected_statuses = array('waiting', 'standard', 'pregnant', 'disability');
         }
         
         // Récupérer le ticket actuellement sélectionné
@@ -482,7 +650,7 @@ class OperatorPage extends Page {
         global $gvPath;
 
         $page = new WebPageOutput();
-        $page->setHtmlPageTitle( "Espace opérateur" );
+        $page->setHtmlPageTitle( "Espace opérateur - FastQueue" );
         $page->setHtmlBodyHeader( $this->getDesignCSS() );
         $page->setHtmlBodyContent( $this->getPageContent() );
         $page->linkStyleSheet( "$gvPath/assets/css/style.css" );
@@ -541,9 +709,10 @@ class OperatorPage extends Page {
             . '<div class="operator-header">'
             . '<div class="header-top">'
             . '<div class="logo-section">'
-            . '<h1>FastQueue</h1>'
+            . '<h1><i class="fas fa-rocket"></i> FastQueue</h1>'
             . '<span class="operator-badge">Opérateur</span>'
             . '</div>'
+            . '<div class="notifications-container" id="notifications-container"></div>'
             . '<div class="header-links">'
             . '<a href="' . $gvPath . '/application/help" class="header-link">'
             . '<i class="fas fa-question-circle"></i> Aide'
@@ -602,7 +771,7 @@ class OperatorPage extends Page {
      * Bloc de sélection des services
      */
     private function getServicesSelectionBlock( $tableBody ) {
-        return '<div class="ticket-section card">'
+        return '<div class="ticket-section card services-card">'
             . '<div class="ticket-header">'
             . '<h2><i class="fas fa-briefcase"></i> Sélectionner les services à servir</h2>'
             . '</div>'
@@ -624,7 +793,12 @@ class OperatorPage extends Page {
         error_log("=== getTicketsListBlock() START ===");
         
         try {
-            $this->pending_tickets = $this->getPendingTicketsByServices( $this->services_served );
+            $statuses = gfSessionVar('selected_statuses', array('waiting', 'standard', 'pregnant', 'disability'));
+            if (!is_array($statuses)) {
+                $statuses = array('waiting', 'standard', 'pregnant', 'disability');
+            }
+            
+            $this->pending_tickets = $this->getPendingTicketsByServices( $this->services_served, $statuses );
             error_log("Pending tickets found: " . count($this->pending_tickets));
             
             $pendingCount = count($this->pending_tickets);
@@ -632,7 +806,7 @@ class OperatorPage extends Page {
             if ( $pendingCount === 0 ) {
                 return '<div class="ticket-section card">'
                     . '<div class="alert alert-info">'
-                    . '<i class="fas fa-info-circle"></i> Aucun ticket en attente pour les services sélectionnés'
+                    . '<i class="fas fa-info-circle"></i> Aucun ticket en attente pour les services et statuts sélectionnés'
                     . '</div>'
                     . '</div>'
                     . '<div class="controls-section card">'
@@ -641,6 +815,25 @@ class OperatorPage extends Page {
                     . '</button>'
                     . '</div>';
             }
+            
+            // Construire le HTML du filtre
+            $filterHtml = '<div class="filter-section">'
+                . '<h3><i class="fas fa-filter"></i> Filtrer par statut</h3>'
+                . '<div class="filter-checkboxes">'
+                . '<label class="filter-item">'
+                . '<input type="checkbox" name="status_filter" value="standard" class="status-filter-checkbox"' . (in_array('standard', $statuses) ? ' checked' : '') . ' />'
+                . '<span class="filter-label"><i class="fas fa-circle"></i> Standard</span>'
+                . '</label>'
+                . '<label class="filter-item">'
+                . '<input type="checkbox" name="status_filter" value="pregnant" class="status-filter-checkbox"' . (in_array('pregnant', $statuses) ? ' checked' : '') . ' />'
+                . '<span class="filter-label"><i class="fas fa-heart"></i> Femme enceinte</span>'
+                . '</label>'
+                . '<label class="filter-item">'
+                . '<input type="checkbox" name="status_filter" value="disability" class="status-filter-checkbox"' . (in_array('disability', $statuses) ? ' checked' : '') . ' />'
+                . '<span class="filter-label"><i class="fas fa-wheelchair"></i> PMR/Handicap</span>'
+                . '</label>'
+                . '</div>'
+                . '</div>';
             
             $ticketsHtml = '';
             foreach ( $this->pending_tickets as $ticket ) {
@@ -678,7 +871,8 @@ class OperatorPage extends Page {
             }
             
             return '<div class="ticket-section card">'
-                . '<div class="ticket-header">'
+                . $filterHtml
+                . '<div class="ticket-header" style="margin-top: 24px;">'
                 . '<h2><i class="fas fa-list"></i> Sélectionner un ticket à traiter (' . $pendingCount . ' en attente)</h2>'
                 . '</div>'
                 . '<div class="tickets-list">'
@@ -721,9 +915,9 @@ class OperatorPage extends Page {
         // Récupérer le badge de statut
         $statusBadge = $this->getStatusBadge( $status );
         
-        return '<div class="ticket-section card">'
+        return '<div class="ticket-section card ticket-display-card">'
             . '<div class="ticket-header">'
-            . '<h2>Ticket en cours de traitement</h2>'
+            . '<h2><i class="fas fa-star"></i> Ticket en cours de traitement</h2>'
             . '</div>'
             . '<div class="ticket-display">'
             . '<div class="ticket-number">'
@@ -783,7 +977,7 @@ class OperatorPage extends Page {
             case 'pregnant':
                 return '<span class="status-badge status-pregnant"><i class="fas fa-heart"></i> Femme enceinte</span>';
             case 'disability':
-                return '<span class="status-badge status-disability"><i class="fas fa-wheelchair"></i> Handicap</span>';
+                return '<span class="status-badge status-disability"><i class="fas fa-wheelchair"></i> PMR/Handicap</span>';
             case 'waiting':
             default:
                 return '<span class="status-badge status-waiting"><i class="fas fa-hourglass-half"></i> En attente</span>';
@@ -920,11 +1114,16 @@ class OperatorPage extends Page {
     }
 
     /**
-     * Récupère les tickets en attente pour les services sélectionnés
+     * Récupère les tickets en attente pour les services et statuts sélectionnés
      */
-    private function getPendingTicketsByServices( $services ) {
+    private function getPendingTicketsByServices( $services, $statuses = array() ) {
         error_log("=== getPendingTicketsByServices() START ===");
         error_log("Services: " . json_encode($services));
+        error_log("Statuses: " . json_encode($statuses));
+        
+        if (empty($statuses)) {
+            $statuses = array('waiting', 'standard', 'pregnant', 'disability');
+        }
         
         if ( empty( $services ) || !is_array( $services ) ) {
             error_log("No services provided");
@@ -944,19 +1143,30 @@ class OperatorPage extends Page {
                 $placeholders = array_fill(0, count($services), '?');
                 $serviceList = implode(",", $placeholders);
                 
+                $statusPlaceholders = array_fill(0, count($statuses), '?');
+                $statusList = implode(",", $statusPlaceholders);
+                
                 $query = "SELECT id, ticket_number, name, phone, service, status, created_at 
                           FROM tickets 
                           WHERE service IN ($serviceList) 
-                          AND status IN ('waiting', 'standard', 'pregnant', 'disability')
+                          AND status IN ($statusList)
                           ORDER BY created_at ASC";
                 
                 error_log("PDO Query: " . $query);
                 
                 $stmt = $db->prepare($query);
                 
-                foreach ($services as $key => $service) {
+                $paramIndex = 1;
+                foreach ($services as $service) {
                     $trimmedService = trim($service);
-                    $stmt->bindValue($key + 1, $trimmedService, PDO::PARAM_STR);
+                    $stmt->bindValue($paramIndex, $trimmedService, PDO::PARAM_STR);
+                    $paramIndex++;
+                }
+                
+                foreach ($statuses as $status) {
+                    $trimmedStatus = trim($status);
+                    $stmt->bindValue($paramIndex, $trimmedStatus, PDO::PARAM_STR);
+                    $paramIndex++;
                 }
                 
                 $stmt->execute();
@@ -970,12 +1180,20 @@ class OperatorPage extends Page {
                     $escapedServices[] = "'" . $escaped . "'";
                 }
                 
+                $escapedStatuses = array();
+                foreach ($statuses as $status) {
+                    $trimmed = trim($status);
+                    $escaped = $db->real_escape_string($trimmed);
+                    $escapedStatuses[] = "'" . $escaped . "'";
+                }
+                
                 $serviceList = implode(",", $escapedServices);
+                $statusList = implode(",", $escapedStatuses);
                 
                 $query = "SELECT id, ticket_number, name, phone, service, status, created_at 
                           FROM tickets 
                           WHERE service IN ($serviceList) 
-                          AND status IN ('waiting', 'standard', 'pregnant', 'disability')
+                          AND status IN ($statusList)
                           ORDER BY created_at ASC";
                 
                 error_log("MySQLi Query: " . $query);
@@ -1131,7 +1349,7 @@ class OperatorPage extends Page {
                     return $stmt->execute();
                 } catch ( Exception $e ) {
                     error_log("Table ticket_stats might not exist: " . $e->getMessage());
-                    return true; // Continuer même si la table n'existe pas
+                    return true;
                 }
             } else {
                 // MySQLi
@@ -1142,7 +1360,7 @@ class OperatorPage extends Page {
                     return $db->query($query);
                 } catch ( Exception $e ) {
                     error_log("Table ticket_stats might not exist: " . $e->getMessage());
-                    return true; // Continuer même si la table n'existe pas
+                    return true;
                 }
             }
             
@@ -1233,11 +1451,17 @@ class OperatorPage extends Page {
             . '* { margin: 0; padding: 0; box-sizing: border-box; }'
             . 'body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(135deg, #f5f7fb 0%, #eef2f9 100%); color: #1a1a2e; overflow-x: hidden; }'
             . '.layout { display: flex; flex-direction: column; min-height: 100vh; }'
-            . '.operator-header { background: white; border-bottom: 2px solid #f0f0f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }'
-            . '.header-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px; border-bottom: 1px solid #f0f0f0; }'
-            . '.logo-section { display: flex; align-items: center; gap: 16px; }'
-            . '.logo-section h1 { font-size: 24px; font-weight: 800; color: #1a1a2e; }'
+            . '.operator-header { background: white; border-bottom: 2px solid #f0f0f0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }'
+            . '.header-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px; border-bottom: 1px solid #f0f0f0; gap: 20px; }'
+            . '.logo-section { display: flex; align-items: center; gap: 16px; flex: 1; }'
+            . '.logo-section h1 { font-size: 28px; font-weight: 800; color: #1a1a2e; display: flex; align-items: center; gap: 10px; }'
+            . '.logo-section h1 i { color: #6C63FF; }'
             . '.operator-badge { background: linear-gradient(135deg, #6C63FF, #8B82FF); color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; }'
+            . '.notifications-container { flex: 1; display: flex; justify-content: center; align-items: center; max-width: 400px; height: 40px; }'
+            . '.notification-badge { display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #ff6b6b, #ee5a6f); color: white; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; box-shadow: 0 4px 12px rgba(255,107,107,0.3); animation: slideIn 0.3s ease; }'
+            . '.notification-badge i { margin-right: 8px; animation: pulse 1s ease infinite; }'
+            . '@keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }'
+            . '@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }'
             . '.header-links { display: flex; align-items: center; gap: 20px; }'
             . '.header-link { display: flex; align-items: center; gap: 8px; color: #666; text-decoration: none; font-weight: 500; transition: all 0.3s ease; padding: 8px 12px; border-radius: 8px; }'
             . '.header-link:hover { background: #f0f0f0; color: #6C63FF; }'
@@ -1257,22 +1481,38 @@ class OperatorPage extends Page {
             . '.card h2 i, .card h3 i { color: #6C63FF; }'
             . '.ticket-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0; }'
             . '.ticket-header h2 { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 0; display: flex; align-items: center; gap: 12px; }'
-            . '.ticket-display { display: flex; justify-content: center; align-items: center; min-height: 280px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-radius: 16px; margin-bottom: 20px; }'
-            . '.ticket-number { text-align: center; }'
-            . '.ticket-number span { display: block; font-size: 72px; font-weight: 800; background: linear-gradient(135deg, #6C63FF, #8B82FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: 12px; }'
+            . '.ticket-display-card { background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 2px solid #e0e0e0; }'
+            . '.services-card { animation: fadeIn 0.5s ease; }'
+            . '@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }'
+            . '.filter-section { background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #6C63FF; }'
+            . '.filter-section h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }'
+            . '.filter-section h3 i { color: #6C63FF; font-size: 14px; }'
+            . '.filter-checkboxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }'
+            . '.filter-item { display: flex; align-items: center; gap: 10px; cursor: pointer; }'
+            . '.status-filter-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: #6C63FF; }'
+            . '.filter-label { display: flex; align-items: center; gap: 6px; font-weight: 500; color: #1a1a2e; font-size: 13px; cursor: pointer; }'
+            . '.filter-label i { font-size: 12px; color: #6C63FF; }'
+            . '.ticket-display { display: flex; justify-content: center; align-items: center; min-height: 280px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-radius: 16px; margin-bottom: 20px; position: relative; overflow: hidden; }'
+            . '.ticket-display::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 30% 70%, rgba(108,99,255,0.05), transparent 50%); pointer-events: none; }'
+            . '.ticket-number { text-align: center; position: relative; z-index: 1; }'
+            . '.ticket-number span { display: block; font-size: 72px; font-weight: 800; background: linear-gradient(135deg, #6C63FF, #8B82FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: 12px; text-shadow: 0 2px 4px rgba(0,0,0,0.1); }'
             . '.ticket-details { background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-radius: 12px; padding: 20px; gap: 16px; display: flex; flex-direction: column; }'
-            . '.detail-row { display: flex; align-items: center; gap: 12px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #6C63FF; }'
+            . '.detail-row { display: flex; align-items: center; gap: 12px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #6C63FF; transition: all 0.3s ease; }'
+            . '.detail-row:hover { transform: translateX(4px); box-shadow: 0 2px 8px rgba(108,99,255,0.1); }'
             . '.detail-label { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #666; min-width: 100px; }'
             . '.detail-label i { color: #6C63FF; font-size: 16px; }'
             . '.detail-value { font-size: 16px; font-weight: 700; color: #1a1a2e; }'
-            . '.alert { padding: 14px 16px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px; }'
+            . '.alert { padding: 14px 16px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px; animation: slideDown 0.3s ease; }'
             . '.alert i { font-size: 18px; flex-shrink: 0; }'
             . '.alert.alert-error { background: #fff0f0; color: #c0392b; border-left: 4px solid #e74c3c; }'
             . '.alert.alert-info { background: #f0f8ff; color: #0066cc; border-left: 4px solid #00a8ff; }'
             . '.alert.alert-success { background: #f0fff0; color: #27ae60; border-left: 4px solid #2ecc71; }'
+            . '@keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }'
             . '.controls-section { background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); }'
             . '.button-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }'
-            . '.btn { padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease; border: none; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }'
+            . '.btn { padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease; border: none; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; position: relative; overflow: hidden; }'
+            . '.btn::before { content: ""; position: absolute; top: 50%; left: 50%; width: 0; height: 0; background: rgba(255,255,255,0.3); border-radius: 50%; transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; }'
+            . '.btn:hover::before { width: 300px; height: 300px; }'
             . '.btn-primary { background: linear-gradient(135deg, #6C63FF, #8B82FF); color: white; }'
             . '.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(108,99,255,0.4); }'
             . '.btn-secondary { background: #f0f0f0; color: #666; }'
@@ -1282,17 +1522,21 @@ class OperatorPage extends Page {
             . '.btn-large { padding: 16px 32px; font-size: 16px; min-height: 56px; }'
             . '.btn:disabled { opacity: 0.5; cursor: not-allowed; }'
             . '.domains-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }'
-            . '.service-item { display: flex; align-items: center; gap: 12px; padding: 16px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; }'
+            . '.service-item { display: flex; align-items: center; gap: 12px; padding: 16px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden; }'
+            . '.service-item::before { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(108,99,255,0.1), transparent 70%); opacity: 0; transition: opacity 0.3s ease; }'
             . '.service-item:hover { background: #f8f9fa; border-color: #6C63FF; box-shadow: 0 4px 12px rgba(108,99,255,0.1); }'
+            . '.service-item:hover::before { opacity: 1; }'
             . '.service-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: #6C63FF; }'
             . '.service-checkbox:checked + .service-label { color: #6C63FF; font-weight: 600; }'
             . '.service-label { flex: 1; font-weight: 500; color: #1a1a2e; cursor: pointer; }'
             . '.queue-count { display: inline-block; background: linear-gradient(135deg, #6C63FF, #8B82FF); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 700; margin-left: 4px; }'
             . '.tickets-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 20px; }'
-            . '.ticket-item { display: grid; align-items: start; gap: 12px; padding: 16px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; }'
+            . '.ticket-item { display: grid; align-items: start; gap: 12px; padding: 16px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden; }'
+            . '.ticket-item::before { content: ""; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(108,99,255,0.1), transparent); transition: left 0.5s ease; }'
             . '.ticket-item:hover { background: #f8f9fa; border-color: #6C63FF; box-shadow: 0 4px 12px rgba(108,99,255,0.1); }'
-            . '.ticket-item.selected { border-color: #6C63FF; background: #f8f9fa; }'
-            . '.ticket-info { display: flex; flex-direction: column; gap: 12px; }'
+            . '.ticket-item:hover::before { left: 100%; }'
+            . '.ticket-item.selected { border-color: #6C63FF; background: linear-gradient(135deg, #f8f9fa, #e8e7ff); }'
+            . '.ticket-info { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }'
             . '.ticket-number-small { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #6C63FF, #8B82FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }'
             . '.client-info { display: flex; flex-direction: column; gap: 8px; }'
             . '.client-detail { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #1a1a2e; }'
@@ -1309,8 +1553,8 @@ class OperatorPage extends Page {
             . '.loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #6C63FF; border-radius: 50%; animation: spin 1s linear infinite; }'
             . '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }'
             . '@media (max-width: 1024px) { .header-top { padding: 16px 24px; } .operator-info-bar { padding: 20px 24px; gap: 16px; } .operator-main { padding: 24px; } }'
-            . '@media (max-width: 768px) { .header-top { flex-direction: column; gap: 16px; text-align: center; } .logo-section { justify-content: center; } .header-links { justify-content: center; width: 100%; } .operator-info-bar { grid-template-columns: 1fr; gap: 12px; } .operator-main { padding: 16px; } .card { padding: 20px; } .ticket-display { min-height: 200px; } .ticket-number span { font-size: 48px; } .domains-grid { grid-template-columns: 1fr; } .tickets-list { grid-template-columns: 1fr; } .button-group { grid-template-columns: 1fr; } .btn-large { width: 100%; } }'
-            . '@media (max-width: 480px) { .header-top { padding: 12px 16px; } .logo-section h1 { font-size: 20px; } .operator-info-bar { padding: 16px; gap: 12px; } .info-item { gap: 10px; } .info-item i { width: 36px; height: 36px; font-size: 18px; } .info-label { font-size: 10px; } .info-value { font-size: 14px; } .operator-main { padding: 12px; } .card { padding: 16px; margin-bottom: 16px; } .card h2, .card h3 { font-size: 16px; margin-bottom: 16px; } .ticket-number span { font-size: 36px; } .domains-grid { gap: 10px; } .service-item { padding: 12px; font-size: 13px; } .btn { padding: 12px 16px; font-size: 13px; } .btn-large { padding: 14px 16px; min-height: 48px; } .tickets-list { grid-template-columns: 1fr; gap: 10px; } .ticket-item { padding: 12px; } .ticket-meta { flex-direction: column; align-items: flex-start; gap: 6px; } .status-badge { padding: 4px 8px; font-size: 10px; } }'
+            . '@media (max-width: 768px) { .header-top { flex-direction: column; gap: 16px; text-align: center; } .logo-section { justify-content: center; } .header-links { justify-content: center; width: 100%; } .notifications-container { max-width: none; width: 100%; } .operator-info-bar { grid-template-columns: 1fr; gap: 12px; } .operator-main { padding: 16px; } .card { padding: 20px; } .ticket-display { min-height: 200px; } .ticket-number span { font-size: 48px; } .domains-grid { grid-template-columns: 1fr; } .tickets-list { grid-template-columns: 1fr; } .button-group { grid-template-columns: 1fr; } .btn-large { width: 100%; } .filter-checkboxes { grid-template-columns: 1fr; } }'
+            . '@media (max-width: 480px) { .header-top { padding: 12px 16px; } .logo-section h1 { font-size: 20px; } .operator-info-bar { padding: 16px; gap: 12px; } .info-item { gap: 10px; } .info-item i { width: 36px; height: 36px; font-size: 18px; } .info-label { font-size: 10px; } .info-value { font-size: 14px; } .operator-main { padding: 12px; } .card { padding: 16px; margin-bottom: 16px; } .card h2, .card h3 { font-size: 16px; margin-bottom: 16px; } .ticket-number span { font-size: 36px; } .domains-grid { gap: 10px; } .service-item { padding: 12px; font-size: 13px; } .btn { padding: 12px 16px; font-size: 13px; } .btn-large { padding: 14px 16px; min-height: 48px; } .tickets-list { grid-template-columns: 1fr; gap: 10px; } .ticket-item { padding: 12px; } .ticket-meta { flex-direction: column; align-items: flex-start; gap: 6px; } .status-badge { padding: 4px 8px; font-size: 10px; } .filter-checkboxes { grid-template-columns: 1fr; } .filter-label { font-size: 12px; } }'
             . '@media print { body { background: white; } .operator-header { display: none; } .operator-main { padding: 0; } .card { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; } }'
             . '::-webkit-scrollbar { width: 8px; height: 8px; }'
             . '::-webkit-scrollbar-track { background: #f0f0f0; }'
@@ -1321,9 +1565,20 @@ class OperatorPage extends Page {
             . '<body>'
             . '<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>'
             . '<script>'
-            . 'var operatorPageScript = (function() {'
+            . $this->getJavaScriptCode()
+            . '</script>'
+            . '</body>'
+            . '</html>';
+    }
+
+    private function getJavaScriptCode() {
+        return 'var operatorPageScript = (function() {'
             . '  var selectedTicketId = null;'
             . '  var selectedServices = [];'
+            . '  var selectedStatuses = ["waiting", "standard", "pregnant", "disability"];'
+            . '  var notificationTimeout = null;'
+            . '  var lastCheckTime = Math.floor(Date.now() / 1000);'
+            . '  var checkInterval = null;'
             . ''
             . '  function showLoading() {'
             . '    $(\'#main-content\').html(\'<div style="text-align: center; padding: 40px;"><div class="loading"></div><p style="margin-top: 20px; color: #666;">Chargement...</p></div>\');'
@@ -1337,6 +1592,43 @@ class OperatorPage extends Page {
             . '    setTimeout(function() { $(\'#main-content > .alert\').fadeOut(500, function() { $(this).remove(); }); }, 3000);'
             . '  }'
             . ''
+            . '  function showNotification(ticket) {'
+            . '    var notification = \'<div class="notification-badge"><i class="fas fa-bell"></i> Nouveau: \' + ticket.ticket_number + \'</div>\';'
+            . '    $(\'#notifications-container\').html(notification);'
+            . '    playNotificationSound();'
+            . '    if (notificationTimeout) clearTimeout(notificationTimeout);'
+            . '    notificationTimeout = setTimeout(function() {'
+            . '      $(\'#notifications-container\').fadeOut(500, function() { $(this).html("").show(); });'
+            . '    }, 5000);'
+            . '  }'
+            . ''
+            . '  function playNotificationSound() {'
+            . '    var audio = new Audio(\'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==\');'
+            . '    audio.play().catch(function() {});'
+            . '  }'
+            . ''
+            . '  function checkNewTickets() {'
+            . '    if (selectedServices.length === 0) return;'
+            . '    $.ajax({'
+            . '      url: location.pathname,'
+            . '      method: \'POST\','
+            . '      dataType: \'json\','
+            . '      headers: { \'X-Requested-With\': \'XMLHttpRequest\' },'
+            . '      data: {'
+            . '        action: \'check_new_tickets\','
+            . '        lastCheck: lastCheckTime'
+            . '      },'
+            . '      success: function(response) {'
+            . '        if (response.success && response.newTickets && response.newTickets.length > 0) {'
+            . '          response.newTickets.forEach(function(ticket) {'
+            . '            showNotification(ticket);'
+            . '          });'
+            . '          lastCheckTime = Math.floor(response.timestamp);'
+            . '        }'
+            . '      }'
+            . '    });'
+            . '  }'
+            . ''
             . '  function updateServicesDisplay() {'
             . '    var text = selectedServices.length > 0 ? selectedServices.join(\', \') : \'Aucun\';'
             . '    $(\'#services-served-display\').text(text);'
@@ -1348,6 +1640,16 @@ class OperatorPage extends Page {
             . '      $(\'.ticket-item\').removeClass(\'selected\');'
             . '      $(this).addClass(\'selected\');'
             . '      selectedTicketId = $(this).data(\'ticket-id\');'
+            . '    });'
+            . '  }'
+            . ''
+            . '  function attachFilterListeners() {'
+            . '    $(\'.status-filter-checkbox\').off(\'change\').on(\'change\', function() {'
+            . '      selectedStatuses = [];'
+            . '      $(\'.status-filter-checkbox:checked\').each(function() {'
+            . '        selectedStatuses.push($(this).val());'
+            . '      });'
+            . '      filterTickets();'
             . '    });'
             . '  }'
             . ''
@@ -1366,8 +1668,23 @@ class OperatorPage extends Page {
             . ''
             . '      updateServicesDisplay();'
             . '      showLoading();'
+            . '      lastCheckTime = Math.floor(Date.now() / 1000);'
             . '      getTickets();'
+            . '      startNotificationCheck();'
             . '    });'
+            . '  }'
+            . ''
+            . '  function startNotificationCheck() {'
+            . '    if (checkInterval) clearInterval(checkInterval);'
+            . '    checkNewTickets();'
+            . '    checkInterval = setInterval(checkNewTickets, 3000);'
+            . '  }'
+            . ''
+            . '  function stopNotificationCheck() {'
+            . '    if (checkInterval) {'
+            . '      clearInterval(checkInterval);'
+            . '      checkInterval = null;'
+            . '    }'
             . '  }'
             . ''
             . '  function attachListControls() {'
@@ -1417,6 +1734,7 @@ class OperatorPage extends Page {
             . '          html += \'</div></div>\';'
             . '          $(\'#main-content\').html(html);'
             . '          attachTicketListeners();'
+            . '          attachFilterListeners();'
             . '          attachListControls();'
             . '        } else {'
             . '          showMessage(\'Erreur: \' + response.message, \'error\');'
@@ -1424,6 +1742,35 @@ class OperatorPage extends Page {
             . '      },'
             . '      error: function() {'
             . '        showMessage(\'Erreur de connexion\', \'error\');'
+            . '      }'
+            . '    });'
+            . '  }'
+            . ''
+            . '  function filterTickets() {'
+            . '    $.ajax({'
+            . '      url: location.pathname,'
+            . '      method: \'POST\','
+            . '      dataType: \'json\','
+            . '      headers: { \'X-Requested-With\': \'XMLHttpRequest\' },'
+            . '      data: {'
+            . '        action: \'filter_tickets\','
+            . '        statuses: selectedStatuses'
+            . '      },'
+            . '      success: function(response) {'
+            . '        if (response.success) {'
+            . '          var html = response.ticketsHtml;'
+            . '          html += \'<div class="controls-section card"><div class="button-group">\';'
+            . '          html += \'<button type="button" id="btn-select-ticket" class="btn btn-primary btn-large"><i class="fas fa-hand-paper"></i> Sélectionner le ticket</button>\';'
+            . '          html += \'<button type="button" id="btn-back-services" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour aux services</button>\';'
+            . '          html += \'</div></div>\';'
+            . '          $(\'#main-content\').html(html);'
+            . '          attachTicketListeners();'
+            . '          attachFilterListeners();'
+            . '          attachListControls();'
+            . '        }'
+            . '      },'
+            . '      error: function() {'
+            . '        showMessage(\'Erreur lors du filtrage\', \'error\');'
             . '      }'
             . '    });'
             . '  }'
@@ -1497,6 +1844,7 @@ class OperatorPage extends Page {
             . '          html += \'</div></div>\';'
             . '          $(\'#main-content\').html(html);'
             . '          attachTicketListeners();'
+            . '          attachFilterListeners();'
             . '          attachListControls();'
             . '        }'
             . '      }'
@@ -1504,6 +1852,7 @@ class OperatorPage extends Page {
             . '  }'
             . ''
             . '  function backToServices() {'
+            . '    stopNotificationCheck();'
             . '    $.ajax({'
             . '      url: location.pathname,'
             . '      method: \'POST\','
@@ -1514,6 +1863,7 @@ class OperatorPage extends Page {
             . '      },'
             . '      success: function(response) {'
             . '        selectedServices = [];'
+            . '        selectedStatuses = ["waiting", "standard", "pregnant", "disability"];'
             . '        updateServicesDisplay();'
             . '        location.reload();'
             . '      }'
@@ -1523,9 +1873,10 @@ class OperatorPage extends Page {
             . '  $(document).ready(function() {'
             . '    attachServiceListeners();'
             . '  });'
-            . '})();'
-            . '</script>'
-            . '</body>'
-            . '</html>';
+            . '  '
+            . '  $(window).on(\'unload\', function() {'
+            . '    stopNotificationCheck();'
+            . '  });'
+            . '})();';
     }
 }

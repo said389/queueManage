@@ -66,12 +66,12 @@ class AdminSettings extends Page {
     }
 
 
-    /** ✅ LAYOUT COMPLET */
+    /** GABARIT COMPLET */
     private function getLayout() {
         global $gvPath;
 
         $messageBox = $this->message
-            ? "<div class='message-box success'><i class=\"fas fa-check-circle\"></i> {$this->message}</div>"
+            ? "<div class='message-box succes'><i class=\"fas fa-check-circle\"></i> {$this->message}</div>"
             : "";
 
         $form = $this->getForm();
@@ -92,11 +92,11 @@ class AdminSettings extends Page {
             <a href="$gvPath/application/adminTopicalDomainList" class="nav-item" title="Domaines"><i class="fas fa-folder-tree"></i><span class="nav-text">Domaines thématiques</span></a>
             <a href="$gvPath/application/adminDeviceList" class="nav-item" title="Appareils"><i class="fas fa-mobile-alt"></i><span class="nav-text">Appareils</span></a>
             <a href="$gvPath/application/adminStats" class="nav-item" title="Statistiques"><i class="fas fa-chart-line"></i><span class="nav-text">Statistiques</span></a>
-            <a href="$gvPath/application/adminSettings" class="nav-item active" title="Paramètres"><i class="fas fa-cog"></i><span class="nav-text">Paramètres</span></a>
+            <a href="$gvPath/application/adminSettings" class="nav-item actif" title="Paramètres"><i class="fas fa-cog"></i><span class="nav-text">Paramètres</span></a>
         </nav>
 
         <div class="sidebar-footer">
-            <a href="$gvPath/application/logoutPage" class="nav-item logout" title="Déconnexion"><i class="fas fa-sign-out-alt"></i><span class="nav-text">Déconnexion</span></a>
+            <a href="$gvPath/application/logoutPage" class="nav-item deconnexion" title="Déconnexion"><i class="fas fa-sign-out-alt"></i><span class="nav-text">Déconnexion</span></a>
         </div>
     </aside>
 
@@ -127,19 +127,19 @@ const mainContent = document.getElementById('mainContent');
 let sidebarIsExpanded = true;
 
 function collapseSidebar() {
-    sidebar.classList.add('collapsed');
-    mainContent.classList.add('expanded');
+    sidebar.classList.add('reduit');
+    mainContent.classList.add('agrandi');
     sidebarIsExpanded = false;
     updateToggleIcon();
-    localStorage.setItem('sidebarState', 'collapsed');
+    localStorage.setItem('sidebarState', 'reduit');
 }
 
 function expandSidebar() {
-    sidebar.classList.remove('collapsed');
-    mainContent.classList.remove('expanded');
+    sidebar.classList.remove('reduit');
+    mainContent.classList.remove('agrandi');
     sidebarIsExpanded = true;
     updateToggleIcon();
-    localStorage.setItem('sidebarState', 'expanded');
+    localStorage.setItem('sidebarState', 'agrandi');
 }
 
 function toggleSidebar() {
@@ -160,13 +160,13 @@ function updateToggleIcon() {
 sidebarToggle.addEventListener('click', function(e) {
     e.preventDefault();
     toggleSidebar();
-    this.classList.add('animate');
-    setTimeout(() => this.classList.remove('animate'), 300);
+    this.classList.add('anime');
+    setTimeout(() => this.classList.remove('anime'), 300);
 });
 
 function restoreSidebarState() {
     const savedState = localStorage.getItem('sidebarState');
-    if (savedState === 'collapsed') collapseSidebar();
+    if (savedState === 'reduit') collapseSidebar();
     else expandSidebar();
 }
 
@@ -185,7 +185,7 @@ HTML;
     }
 
 
-    /** ✅ FORMULAIRE */
+    /** FORMULAIRE */
     public function getForm() {
         global $gvEditableConfs;
 
@@ -194,11 +194,12 @@ HTML;
         foreach ($gvEditableConfs as $conf) {
             $tag = $this->generateInputTag($conf);
             $description = $this->getFieldDescription($conf->getName());
+            $label = $this->getFieldLabel($conf->getName());
 
             $fields .= <<<HTML
             <div class="settings-group">
                 <div class="settings-label">
-                    <label>{$conf->getText()}</label>
+                    <label>{$label}</label>
                     <small class="conf-desc">$description</small>
                 </div>
                 <div class="settings-field">
@@ -212,10 +213,10 @@ HTML;
         <form method="post" class="settings-form">
             $fields
             <div class="form-actions">
-                <button class="btn-primary" type="submit">
+                <button class="btn-principal" type="submit">
                     <i class="fas fa-save"></i> Enregistrer
                 </button>
-                <button type="button" class="btn-secondary" onclick="window.location.reload();">
+                <button type="button" class="btn-secondaire" onclick="window.location.reload();">
                     <i class="fas fa-undo-alt"></i> Annuler
                 </button>
             </div>
@@ -224,28 +225,57 @@ HTML;
     }
 
 
-    /** ✅ Description des champs */
-    private function getFieldDescription($fieldName) {
-        $descriptions = [
-            'site_name' => 'Nom du site affiché dans l\'interface',
-            'site_email' => 'Email de contact pour les notifications',
-            'ticket_prefix' => 'Préfixe utilisé pour les numéros de ticket',
-            'max_ticket_daily' => 'Nombre maximum de tickets par jour',
-            'session_timeout' => 'Durée d\'inactivité avant déconnexion (minutes)',
-            'notifications_enabled' => 'Activer les notifications par email',
-            'maintenance_mode' => 'Mode maintenance : restreint l\'accès utilisateur',
-            'default_language' => 'Langue par défaut de l\'interface',
-            'timezone' => 'Fuseau horaire du système',
-            'date_format' => 'Format d\'affichage des dates',
-            'items_per_page' => 'Nombre d\'éléments par page dans les listes',
-            'ticket_expiry_days' => 'Nombre de jours avant expiration des tickets'
+    /** LIBELLÉS DES CHAMPS EN FRANÇAIS */
+    private function getFieldLabel($fieldName) {
+        $labels = [
+            'site_name' => 'Nom du site',
+            'site_email' => 'Email du site',
+            'ticket_prefix' => 'Préfixe des tickets',
+            'max_ticket_daily' => 'Maximum de tickets par jour',
+            'session_timeout' => 'Délai d\'expiration de session',
+            'notifications_enabled' => 'Activer les notifications',
+            'maintenance_mode' => 'Mode maintenance',
+            'default_language' => 'Langue par défaut',
+            'timezone' => 'Fuseau horaire',
+            'date_format' => 'Format de date',
+            'items_per_page' => 'Éléments par page',
+            'ticket_expiry_days' => 'Expiration des tickets (jours)',
+            'sysadmin_code' => 'Code sysAdmin',
+            'sysadmin_password' => 'Mot de passe sysAdmin',
+            'password_min_length' => 'Longueur minimale du mot de passe',
+            'session_duration' => 'Durée de session'
         ];
         
-        return isset($descriptions[$fieldName]) ? $descriptions[$fieldName] : 'Configurer ce paramètre';
+        return isset($labels[$fieldName]) ? $labels[$fieldName] : ucfirst(str_replace('_', ' ', $fieldName));
     }
 
 
-    /** ✅ INPUTS */
+    /** DESCRIPTIONS DES CHAMPS EN FRANÇAIS */
+    private function getFieldDescription($fieldName) {
+        $descriptions = [
+            'site_name' => 'Nom du site affiché dans l\'interface utilisateur et les emails',
+            'site_email' => 'Adresse e-mail de contact pour les notifications système',
+            'ticket_prefix' => 'Préfixe utilisé pour les numéros de ticket (ex: TK-, TKT-, etc.)',
+            'max_ticket_daily' => 'Nombre maximum de tickets pouvant être émis par jour (0 = illimité)',
+            'session_timeout' => 'Durée d\'inactivité (en minutes) avant déconnexion automatique',
+            'notifications_enabled' => 'Activer l\'envoi des notifications par e-mail aux utilisateurs',
+            'maintenance_mode' => 'Mode maintenance : restreint l\'accès aux administrateurs uniquement',
+            'default_language' => 'Langue par défaut de l\'interface utilisateur',
+            'timezone' => 'Fuseau horaire du système pour les horodatages',
+            'date_format' => 'Format d\'affichage des dates (exemple : d/m/Y, Y-m-d, etc.)',
+            'items_per_page' => 'Nombre d\'éléments affichés par page dans les listes',
+            'ticket_expiry_days' => 'Nombre de jours avant expiration automatique des tickets non traités',
+            'sysadmin_code' => 'Code d\'authentification pour l\'accès administrateur système',
+            'sysadmin_password' => 'Mot de passe d\'accès pour l\'administrateur système',
+            'password_min_length' => 'Longueur minimale requise pour les mots de passe utilisateur',
+            'session_duration' => 'Durée de validité de la session utilisateur en secondes'
+        ];
+        
+        return isset($descriptions[$fieldName]) ? $descriptions[$fieldName] : 'Configurer ce paramètre système';
+    }
+
+
+    /** GÉNÉRATION DES CHAMPS DE SAISIE */
     protected function generateInputTag($conf) {
 
         $tagName = 'input';
@@ -259,16 +289,16 @@ HTML;
         elseif ($type == 'boolean') {
             $checked = $value ? 'checked' : '';
             return <<<HTML
-            <label class="toggle-switch">
+            <label class="interrupteur">
                 <input type="hidden" name="{$conf->getName()}" value="0">
-                <input type="checkbox" name="{$conf->getName()}" value="1" $checked class="toggle-input">
-                <span class="toggle-slider"></span>
+                <input type="checkbox" name="{$conf->getName()}" value="1" $checked class="interrupteur-input">
+                <span class="interrupteur-curseur"></span>
             </label>
 HTML;
         }
         elseif ($type == 'textarea') {
             $tagName = 'textarea';
-            $attributes .= ' rows="4" placeholder="Entrez votre texte ici..."';
+            $attributes .= ' rows="4" placeholder="Saisissez votre texte ici..."';
         }
         elseif ($type == 'color') {
             $attributes .= ' type="color"';
@@ -276,8 +306,11 @@ HTML;
         elseif ($type == 'email') {
             $attributes .= ' type="email" placeholder="exemple@domaine.com"';
         }
+        elseif ($type == 'password') {
+            $attributes .= ' type="password" placeholder="Saisissez un mot de passe..."';
+        }
         else {
-            $attributes .= ' type="text" placeholder="Entrez une valeur..."';
+            $attributes .= ' type="text" placeholder="Saisissez une valeur..."';
         }
 
         if ($tagName == 'input') {
@@ -288,7 +321,7 @@ HTML;
     }
 
 
-    /** ✅ CSS PREMIUM */
+    /** CSS MODERNE */
     private function getDesignCSS() {
         return <<<CSS
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -313,11 +346,11 @@ HTML;
         overflow-y: auto;
     }
 
-    .sidebar.collapsed { width: 80px; }
-    .sidebar.collapsed .sidebar-header { padding: 20px 15px; }
-    .sidebar.collapsed .logo { justify-content: center; margin-bottom: 20px; }
-    .sidebar.collapsed .logo-text, .sidebar.collapsed .admin-badge, .sidebar.collapsed .nav-text { display: none; }
-    .sidebar.collapsed .nav-item { justify-content: center; padding: 12px 15px; }
+    .sidebar.reduit { width: 80px; }
+    .sidebar.reduit .sidebar-header { padding: 20px 15px; }
+    .sidebar.reduit .logo { justify-content: center; margin-bottom: 20px; }
+    .sidebar.reduit .logo-text, .sidebar.reduit .admin-badge, .sidebar.reduit .nav-text { display: none; }
+    .sidebar.reduit .nav-item { justify-content: center; padding: 12px 15px; }
 
     .sidebar-toggle {
         position: absolute; top: 20px; right: -15px; z-index: 1001;
@@ -329,7 +362,7 @@ HTML;
     }
 
     .sidebar-toggle:hover { transform: scale(1.1); }
-    .sidebar-toggle.animate { animation: pulse 0.3s ease; }
+    .sidebar-toggle.anime { animation: pulse 0.3s ease; }
 
     @keyframes pulse {
         0%, 100% { transform: scale(1); }
@@ -346,16 +379,16 @@ HTML;
     .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 25px; color: rgba(255,255,255,0.8); text-decoration: none; transition: all 0.3s ease; font-size: 14px; font-weight: 500; }
     .nav-item i { width: 20px; font-size: 18px; flex-shrink: 0; }
     .nav-item:hover { background: rgba(108, 99, 255, 0.1); color: #fff; padding-left: 30px; }
-    .sidebar.collapsed .nav-item:hover { padding-left: 15px; background: rgba(108, 99, 255, 0.2); border-radius: 10px; }
-    .nav-item.active { background: linear-gradient(90deg, #6C63FF, rgba(108, 99, 255, 0.1)); color: #fff; border-right: 3px solid #6C63FF; }
-    .sidebar.collapsed .nav-item.active { border-right: none; border-radius: 10px; }
+    .sidebar.reduit .nav-item:hover { padding-left: 15px; background: rgba(108, 99, 255, 0.2); border-radius: 10px; }
+    .nav-item.actif { background: linear-gradient(90deg, #6C63FF, rgba(108, 99, 255, 0.1)); color: #fff; border-right: 3px solid #6C63FF; }
+    .sidebar.reduit .nav-item.actif { border-right: none; border-radius: 10px; }
 
     .sidebar-footer { padding: 20px 0; border-top: 1px solid rgba(255,255,255,0.1); }
-    .logout { color: #ff6b6b; }
-    .logout:hover { background: rgba(255, 107, 107, 0.1); padding-left: 30px; }
+    .deconnexion { color: #ff6b6b; }
+    .deconnexion:hover { background: rgba(255, 107, 107, 0.1); padding-left: 30px; }
 
     .main-content { flex: 1; margin-left: 280px; min-height: 100vh; background: #f5f7fb; transition: margin-left 0.3s ease; }
-    .main-content.expanded { margin-left: 80px; }
+    .main-content.agrandi { margin-left: 80px; }
     
     .content-wrapper { padding: 30px 40px; max-width: 1200px; margin: 0 auto; }
     .page-header { margin-bottom: 30px; }
@@ -369,8 +402,8 @@ HTML;
     .card-header h3 { font-size: 18px; font-weight: 600; color: #1a1a2e; }
 
     .message-box { padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-size: 14px; }
-    .message-box.success { background: #e8f5e9; border-left: 4px solid #4caf50; color: #2e7d32; }
-    .message-box.success i { color: #4caf50; font-size: 20px; }
+    .message-box.succes { background: #e8f5e9; border-left: 4px solid #4caf50; color: #2e7d32; }
+    .message-box.succes i { color: #4caf50; font-size: 20px; }
     .message-box a { color: #6C63FF; text-decoration: none; font-weight: 600; }
     .message-box a:hover { text-decoration: underline; }
 
@@ -386,19 +419,19 @@ HTML;
     .settings-input:focus { outline: none; border-color: #6C63FF; box-shadow: 0 0 0 3px rgba(108,99,255,0.1); }
     textarea.settings-input { resize: vertical; font-family: inherit; }
 
-    .toggle-switch { position: relative; display: inline-block; width: 52px; height: 28px; cursor: pointer; }
-    .toggle-input { opacity: 0; width: 0; height: 0; position: absolute; }
-    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: 0.3s; border-radius: 34px; }
-    .toggle-slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; }
-    .toggle-input:checked + .toggle-slider { background-color: #6C63FF; }
-    .toggle-input:checked + .toggle-slider:before { transform: translateX(24px); }
+    .interrupteur { position: relative; display: inline-block; width: 52px; height: 28px; cursor: pointer; }
+    .interrupteur-input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .interrupteur-curseur { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: 0.3s; border-radius: 34px; }
+    .interrupteur-curseur:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; }
+    .interrupteur-input:checked + .interrupteur-curseur { background-color: #6C63FF; }
+    .interrupteur-input:checked + .interrupteur-curseur:before { transform: translateX(24px); }
 
     .form-actions { display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px; padding-top: 20px; border-top: 1px solid #f0f0f0; }
-    .btn-primary, .btn-secondary { padding: 12px 28px; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease; border: none; font-family: inherit; display: inline-flex; align-items: center; gap: 8px; }
-    .btn-primary { background: linear-gradient(135deg, #6C63FF, #8B82FF); color: white; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(108,99,255,0.4); }
-    .btn-secondary { background: #f0f0f0; color: #666; }
-    .btn-secondary:hover { background: #e0e0e0; }
+    .btn-principal, .btn-secondaire { padding: 12px 28px; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease; border: none; font-family: inherit; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-principal { background: linear-gradient(135deg, #6C63FF, #8B82FF); color: white; }
+    .btn-principal:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(108,99,255,0.4); }
+    .btn-secondaire { background: #f0f0f0; color: #666; }
+    .btn-secondaire:hover { background: #e0e0e0; }
 
     @media (max-width: 1024px) {
         .content-wrapper { padding: 20px 25px; }
@@ -409,14 +442,14 @@ HTML;
     @media (max-width: 768px) {
         .sidebar-toggle { display: none; }
         .main-content { margin-left: 80px; }
-        .main-content.expanded { margin-left: 80px; }
+        .main-content.agrandi { margin-left: 80px; }
         .content-wrapper { padding: 80px 15px 20px 15px; }
         .page-header h1 { font-size: 24px; }
         .card-header { padding: 15px 20px; }
         .settings-form { padding: 15px; }
         .settings-group { padding: 15px 0; }
         .form-actions { flex-direction: column; }
-        .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+        .btn-principal, .btn-secondaire { width: 100%; justify-content: center; }
     }
 
     @media (max-width: 480px) {

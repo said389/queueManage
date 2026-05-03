@@ -1,8 +1,9 @@
 <?php
 /**
  * Smart Queue Management - Client Space
- * Adapté à la structure réelle de la table tickets
- * Design Premium Amélioré + Menu Langue Escamotable
+ * ✅ Numérotation intelligente par service (S-1, S-2, etc.)
+ * ✅ Réinitialisation quotidienne automatique
+ * ✅ Impression optimisée avec persistance du numéro
  */
 
 session_start();
@@ -158,9 +159,9 @@ try {
     if ($tableCheck->rowCount() === 0) {
         $db_error = "Table 'topical_domain' introuvable";
     } else {
-        // Récupérer les domaines ACTIFS
+        // Récupérer les domaines ACTIFS avec leur code
         $stmt = $pdo->prepare(
-            "SELECT td_id as id, td_name as nom, td_description as description 
+            "SELECT td_id as id, td_name as nom, td_description as description, td_code as code
              FROM topical_domain 
              WHERE td_active = 1 
              ORDER BY td_name ASC"
@@ -176,7 +177,10 @@ try {
     error_log("❌ " . $db_error);
 }
 
-// Traiter les requêtes AJAX
+// ═════════════════════════════════════════════════════════════════
+// TRAITEMENT DES REQUÊTES AJAX
+// ═════════════════════════════════════════════════════════════════
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     
@@ -190,6 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($action === 'set_service') {
         $_SESSION['service'] = $_POST['service'];
+        $_SESSION['service_code'] = $_POST['service_code'] ?? '';
         echo json_encode(['success' => true]);
         exit;
     }
@@ -199,8 +204,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $phone = $_POST['phone'] ?? '';
         $status = $_POST['status'] ?? '';
         $service = $_POST['service'] ?? '';
+        $serviceCode = $_POST['service_code'] ?? '';
         
-        if (empty($name) || empty($phone) || empty($status) || empty($service)) {
+        if (empty($name) || empty($phone) || empty($status) || empty($service) || empty($serviceCode)) {
             echo json_encode(['success' => false, 'message' => $t['error_empty']]);
             exit;
         }
@@ -209,9 +215,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Numéro de téléphone invalide']);
             exit;
         }
-        
-        // Générer un numéro de ticket unique
-        $ticket_number = date('YmdHis') . rand(1000, 9999);
         
         try {
             $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
@@ -223,7 +226,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
             );
             
-            // ✅ INSERTION CORRIGÉE SELON LA STRUCTURE RÉELLE
+            // ═════════════════════════════════════════════════════════════
+            // 1️⃣ GÉNÉRER LE NUMÉRO DE TICKET AVEC FORMAT COURT
+            // ═════════════════════════════════════════════════════════════
+            // Format: SERVICE_CODE-NUMERO (ex: S-1, S-2, ACC-15, etc.)
+            
+            $today = date('Y-m-d');
+            $serviceCode = strtoupper(trim($serviceCode));
+            
+            // Vérifier et créer la table de comptage si elle n'existe pas
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS ticket_counter (
+                    tc_id INT PRIMARY KEY AUTO_INCREMENT,
+                    tc_service_code VARCHAR(10) NOT NULL UNIQUE,
+                    tc_date DATE NOT NULL,
+                    tc_count INT DEFAULT 0,
+                    UNIQUE KEY unique_service_date (tc_service_code, tc_date)
+                ) ENGINE=InnoDB DEFAULT CHARSET=" . DB_CHARSET
+            );
+            
+            // Récupérer ou créer le compteur pour le service d'aujourd'hui
+            $stmt = $pdo->prepare(
+                "SELECT tc_count FROM ticket_counter 
+                 WHERE tc_service_code = :service_code AND tc_date = :date"
+            );
+            $stmt->execute([
+                'service_code' => $serviceCode,
+                'date' => $today
+            ]);
+            
+            $result = $stmt->fetch();
+            $nextNumber = ($result ? $result['tc_count'] : 0) + 1;
+            
+            // Générer le numéro de ticket au format court
+            $ticket_number = $serviceCode . '-' . $nextNumber;
+            
+            // Mettre à jour ou insérer le compteur
+            $stmt = $pdo->prepare(
+                "INSERT INTO ticket_counter (tc_service_code, tc_date, tc_count) 
+                 VALUES (:service_code, :date, :count)
+                 ON DUPLICATE KEY UPDATE tc_count = tc_count + 1"
+            );
+            
+            $stmt->execute([
+                'service_code' => $serviceCode,
+                'date' => $today,
+                'count' => $nextNumber
+            ]);
+            
+            // ═════════════════════════════════════════════════════════════
+            // 2️⃣ INSÉRER LE TICKET DANS LA TABLE TICKETS
+            // ═════════════════════════════════════════════════════════════
+            
             $stmt = $pdo->prepare(
                 "INSERT INTO tickets (ticket_number, name, phone, status, service, created_at) 
                  VALUES (:ticket_number, :name, :phone, :status, :service, :created_at)"
@@ -238,14 +292,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'created_at' => date('Y-m-d H:i:s')
             ]);
             
+            error_log("✅ Ticket créé: $ticket_number pour $name");
+            
             echo json_encode([
                 'success' => true,
                 'ticket_number' => $ticket_number,
                 'name' => $name,
                 'phone' => $phone,
                 'status' => $status,
-                'service' => $service
+                'service' => $service,
+                'service_code' => $serviceCode
             ]);
+            
         } catch (Exception $e) {
             error_log('❌ Erreur sauvegarde ticket: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Erreur: ' . $e->getMessage()]);
@@ -416,7 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         /* ═════════════════════════════════════════════════════════════ */
         /* CARD - Conteneur Principal */
-        /* ═══════════════════���═════════════════════════════════════════ */
+        /* ═════════════════════════════════════════════════════════════ */
         .card {
             background: white;
             border-radius: 20px;
@@ -459,6 +517,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             to {
                 opacity: 1;
                 transform: scale(1);
+            }
+        }
+        
+        @keyframes ticketPulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
             }
         }
         
@@ -533,7 +600,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             left: 32px;
         }
         
-        /* Bouton Circulaire Flottant */
         .language-toggle-btn-float {
             width: 56px;
             height: 56px;
@@ -562,7 +628,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transform: scale(0.95);
         }
         
-        /* Backdrop Semi-transparent */
         .language-menu-backdrop {
             display: none;
             position: fixed;
@@ -577,7 +642,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: rgba(0, 0, 0, 0.4);
         }
         
-        /* Menu Dropdown */
         .language-dropdown-menu {
             position: absolute;
             bottom: 80px;
@@ -604,7 +668,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
         }
         
-        /* Items du Menu */
         .language-menu-item {
             display: flex;
             align-items: center;
@@ -656,7 +719,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: none;
         }
         
-        /* Indicateur de Sélection */
         .language-menu-indicator {
             width: 8px;
             height: 8px;
@@ -811,7 +873,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: white;
         }
         
-        /* ══════════════════════════════════════════════════��══════════ */
+        /* ═════════════════════════════════════════════════════════════ */
         /* SERVICE BUTTONS */
         /* ═════════════════════════════════════════════════════════════ */
         .service-buttons {
@@ -973,7 +1035,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         /* ═════════════════════════════════════════════════════════════ */
-        /* TICKET PREVIEW */
+        /* TICKET PREVIEW - OPTIMISÉ POUR L'IMPRESSION */
         /* ═════════════════════════════════════════════════════════════ */
         .ticket-preview {
             background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
@@ -983,35 +1045,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin: 36px 0;
             border: 1px solid var(--border-light);
             box-shadow: var(--shadow-md);
+            page-break-inside: avoid;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
         }
         
         .ticket-preview h2 {
             font-size: 28px;
-            margin-bottom: 12px;
+            margin: 0;
             color: var(--text-dark);
             font-weight: 800;
         }
         
         .ticket-number {
-            font-size: 42px;
-            font-weight: 800;
+            font-size: 56px;
+            font-weight: 900;
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             margin: 20px 0;
-            letter-spacing: 3px;
+            letter-spacing: 4px;
             font-family: 'Courier New', monospace;
+            animation: ticketPulse 2s ease-in-out infinite;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            page-break-inside: avoid;
         }
         
         .ticket-info {
             background: white;
             padding: 24px;
             border-radius: 12px;
-            margin: 20px 0;
+            margin: 0;
             text-align: left;
             border: 1px solid var(--border-light);
             box-shadow: var(--shadow-sm);
+            page-break-inside: avoid;
         }
         
         .ticket-info p {
@@ -1035,6 +1108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .ticket-info span {
             color: var(--text-light);
             font-weight: 500;
+            text-align: right;
         }
         
         /* ═════════════════════════════════════════════════════════════ */
@@ -1054,26 +1128,156 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         /* ═════════════════════════════════════════════════════════════ */
-        /* RESPONSIVE DESIGN */
+        /* ✅ MEDIA PRINT - IMPRESSION OPTIMISÉE */
         /* ═════════════════════════════════════════════════════════════ */
         @media print {
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            
             body {
-                background: white;
+                background: white !important;
+                font-size: 16px;
+            }
+            
+            .container-main {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                padding: 0;
+                margin: 0;
             }
             
             .card {
                 box-shadow: none;
                 padding: 40px;
+                margin: 0;
+                max-width: 100%;
+                border: none;
+                background: white;
+                border-radius: 0;
+                animation: none;
             }
             
+            /* Masquer les éléments inutiles à l'impression */
             .language-selector,
+            .language-menu-backdrop,
             .button-group,
             .progress-container,
-            .language-menu-backdrop {
+            .qr-container,
+            .language-toggle-wrapper,
+            .error-message,
+            #step1, #step2, #step3 {
+                display: none !important;
+            }
+            
+            /* Afficher uniquement l'étape 4 (ticket) */
+            #step4 {
+                display: block !important;
+            }
+            
+            #step4 h1 {
+                font-size: 24px;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+            
+            .subtitle {
                 display: none;
+            }
+            
+            /* Optimiser le ticket pour l'impression */
+            .ticket-preview {
+                background: white !important;
+                padding: 40px;
+                border-radius: 0;
+                box-shadow: none !important;
+                margin: 0;
+                border: 3px dashed #333;
+                page-break-inside: avoid;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                min-height: 500px;
+                justify-content: center;
+            }
+            
+            .ticket-preview h2 {
+                font-size: 20px;
+                margin: 0;
+                text-align: center;
+            }
+            
+            .ticket-number {
+                font-size: 72px;
+                font-weight: 900;
+                color: #000 !important;
+                -webkit-text-fill-color: unset;
+                background: none !important;
+                background-clip: unset !important;
+                -webkit-background-clip: unset !important;
+                margin: 30px 0;
+                letter-spacing: 6px;
+                font-family: 'Courier New', monospace;
+                animation: none !important;
+                min-height: 90px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid #000;
+                padding: 20px;
+                border-radius: 8px;
+                page-break-inside: avoid;
+            }
+            
+            .ticket-info {
+                background: white !important;
+                padding: 20px;
+                border: 1px solid #333;
+                border-radius: 4px;
+                box-shadow: none !important;
+                page-break-inside: avoid;
+            }
+            
+            .ticket-info p {
+                font-size: 13px;
+                padding: 10px 0;
+                border-color: #ddd;
+                display: flex;
+                justify-content: space-between;
+            }
+            
+            .ticket-info strong {
+                color: #000;
+                font-weight: 700;
+            }
+            
+            .ticket-info span {
+                color: #000;
+                font-weight: 500;
+                text-align: right;
+            }
+            
+            /* Styles de couleur pour impression en noir et blanc */
+            @page {
+                size: A4;
+                margin: 20mm;
             }
         }
         
+        /* ═════════════════════════════════════════════════════════════ */
+        /* RESPONSIVE DESIGN */
+        /* ═════════════════════════════════════════════════════════════ */
         @media (max-width: 768px) {
             .card {
                 padding: 36px 24px;
@@ -1196,7 +1400,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             .ticket-number {
-                font-size: 32px;
+                font-size: 42px;
                 letter-spacing: 2px;
             }
             
@@ -1310,7 +1514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if (count($domaines) > 0): ?>
                         <?php foreach ($domaines as $domaine): ?>
                             <button class="service-btn" 
-                                    onclick="selectService('<?php echo htmlspecialchars($domaine['nom']); ?>', this)">
+                                    onclick="selectService('<?php echo htmlspecialchars($domaine['nom']); ?>', '<?php echo htmlspecialchars($domaine['code']); ?>', this)">
                                 📌 <?php echo htmlspecialchars($domaine['nom']); ?>
                                 <?php if (!empty($domaine['description'])): ?>
                                     <small><?php echo htmlspecialchars($domaine['description']); ?></small>
@@ -1373,6 +1577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="subtitle"><?php echo $t['ticket_number']; ?></p>
                 
                 <div class="ticket-preview">
+                    <h2><?php echo $t['ticket_number']; ?></h2>
                     <div class="ticket-number" id="ticketNumber">----</div>
                     
                     <div class="ticket-info">
@@ -1445,17 +1650,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         let currentStep = 1;
         let selectedService = '';
+        let selectedServiceCode = '';
         let currentLanguage = '<?php echo $lang; ?>';
         
         console.log('🚀 Domaines au chargement:', <?php echo json_encode($domaines); ?>);
         
         // ═══════════════════════════════════════════════════════════════
         // MENU DE LANGUE - Fonctions Escamotables
-        // ════════════════════════════════════════════════��══════════════
+        // ═══════════════════════════════════════════════════════════════
         
-        /**
-         * Basculer l'ouverture/fermeture du menu
-         */
         function toggleLanguageMenu() {
             const menu = document.getElementById('languageDropdownMenu');
             const backdrop = document.getElementById('languageMenuBackdrop');
@@ -1470,9 +1673,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        /**
-         * Fermer le menu de langue
-         */
         function closeLanguageMenu() {
             const menu = document.getElementById('languageDropdownMenu');
             const backdrop = document.getElementById('languageMenuBackdrop');
@@ -1481,19 +1681,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             backdrop.classList.remove('active');
         }
         
-        /**
-         * Sélectionner une langue depuis le menu
-         */
         function selectLanguageFromMenu(lang) {
             const langCodes = ['ar', 'fr', 'en', 'it'];
             if (!langCodes.includes(lang)) return;
             
-            // Mettre à jour les indicateurs visuels
             const menuItems = document.querySelectorAll('.language-menu-item');
             menuItems.forEach(item => item.classList.remove('active'));
             event.target.closest('.language-menu-item').classList.add('active');
             
-            // Mettre à jour les boutons en haut
             const toggleButtons = document.querySelectorAll('.lang-toggle-btn');
             toggleButtons.forEach(btn => btn.classList.remove('active'));
             const langMap = { 'ar': 0, 'fr': 1, 'en': 2, 'it': 3 };
@@ -1506,9 +1701,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             changeLanguage(lang);
         }
         
-        /**
-         * Changer la langue (requête AJAX)
-         */
         function changeLanguage(lang) {
             const langCodes = ['ar', 'fr', 'en', 'it'];
             if (!langCodes.includes(lang)) return;
@@ -1525,7 +1717,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .catch(error => console.error('Erreur:', error));
         }
         
-        // Fermer le menu au clic sur le backdrop
         document.addEventListener('click', function(event) {
             const selector = document.getElementById('languageSelector');
             const menu = document.getElementById('languageDropdownMenu');
@@ -1537,7 +1728,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
         
-        // Fermer le menu avec la touche Escape
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeLanguageMenu();
@@ -1598,19 +1788,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             changeLanguage(lang);
         }
         
-        function selectService(service, element) {
+        function selectService(service, serviceCode, element) {
             const buttons = document.querySelectorAll('.service-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
             
             selectedService = service;
+            selectedServiceCode = serviceCode;
             
-            console.log('✅ Service sélectionné:', service);
+            console.log('✅ Service sélectionné:', service, 'Code:', serviceCode);
             
             fetch(window.location.href, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=set_service&service=' + encodeURIComponent(service)
+                body: 'action=set_service&service=' + encodeURIComponent(service) + '&service_code=' + encodeURIComponent(serviceCode)
             })
             .catch(error => console.error('Erreur:', error));
         }
@@ -1643,8 +1834,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             formData.append('phone', phone);
             formData.append('status', status);
             formData.append('service', selectedService);
+            formData.append('service_code', selectedServiceCode);
             
-            // Disable button during submission
             const submitBtn = event.target;
             submitBtn.disabled = true;
             submitBtn.style.opacity = '0.6';
@@ -1676,14 +1867,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         function displayTicket(data) {
-            // Animate ticket number display
+            // ✅ PERSISTANCE DU NUMÉRO - Animation fluide
             const ticketNumber = document.getElementById('ticketNumber');
-            ticketNumber.style.animation = 'none';
-            setTimeout(() => {
-                ticketNumber.textContent = data.ticket_number;
-                ticketNumber.style.animation = 'slideInRight 0.6s ease-out';
-            }, 10);
             
+            // Arrêter l'animation actuelle et réinitialiser
+            ticketNumber.style.animation = 'none';
+            ticketNumber.offsetHeight; // Forcer le recalcul du style
+            
+            // Afficher le nouveau numéro avec animation
+            ticketNumber.textContent = data.ticket_number;
+            ticketNumber.style.animation = 'slideInRight 0.6s ease-out';
+            
+            // Afficher les autres infos
             document.getElementById('ticketName').textContent = data.name;
             document.getElementById('ticketPhone').textContent = data.phone;
             document.getElementById('ticketStatus').textContent = data.status;
@@ -1696,33 +1891,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         function printTicket() {
             const printBtn = event.target;
-            printBtn.textContent = '✓ Impression...';
+            const originalText = printBtn.textContent;
+            
+            // Préparer l'impression
+            printBtn.textContent = '⏳ Impression...';
             printBtn.disabled = true;
             
-            window.print();
-            
+            // Petit délai avant impression pour s'assurer que le DOM est prêt
             setTimeout(() => {
-                printBtn.textContent = '🖨️ <?php echo $t['print_ticket']; ?>';
-                printBtn.disabled = false;
-            }, 1500);
+                window.print();
+                
+                // Restaurer le bouton après impression
+                setTimeout(() => {
+                    printBtn.textContent = originalText;
+                    printBtn.disabled = false;
+                }, 1500);
+            }, 100);
         }
         
         function resetForm() {
-            // Smooth reset with animation
+            // Réinitialiser le formulaire avec animation fluide
             const card = document.querySelector('.card');
             card.style.animation = 'slideIn 0.5s ease-out';
             
+            // Réinitialiser les champs
             document.getElementById('fullName').value = '';
             document.getElementById('phone').value = '';
             document.getElementById('status').value = '';
             document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('ticketNumber').textContent = '----';
+            
+            // Réinitialiser la sélection du service
             document.querySelectorAll('.service-btn').forEach(btn => btn.classList.remove('active'));
             selectedService = '';
+            selectedServiceCode = '';
+            
+            // Retour à l'étape 1
             goToStep(1);
             generateQRCode();
         }
         
-        // Initialize on page load
+        // Initialiser au chargement de la page
         document.addEventListener('DOMContentLoaded', function() {
             generateQRCode();
             updateProgress(1);
@@ -1741,7 +1950,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
             }
             
-            // Add keyboard navigation
+            // Navigation au clavier
             document.addEventListener('keypress', function(event) {
                 if (event.key === 'Enter') {
                     const activeStep = document.querySelector('.step.active');

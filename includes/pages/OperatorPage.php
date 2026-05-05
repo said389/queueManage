@@ -46,8 +46,14 @@ class OperatorPage extends Page {
                 $_SESSION['selected_ticket_id'] = $this->selected_ticket_id;
                 $_SESSION['timer_start'] = time();
                 $_SESSION['timer_paused'] = false;
-                $_SESSION['timer_remaining'] = 10;
+                $_SESSION['timer_remaining'] = 60;
                 $this->ticket_served = $this->getTicketById( $this->selected_ticket_id );
+                
+                // 🆕 SYNCHRONIZE WITH WAITING ROOM DISPLAY
+                if ( $this->ticket_served ) {
+                    $this->syncTicketToWaitingRoom( $this->ticket_served );
+                }
+                
                 return true;
             }
         }
@@ -157,7 +163,7 @@ class OperatorPage extends Page {
     private function ajaxGetTimerStatus() {
         $timer_start = isset($_SESSION['timer_start']) ? (int)$_SESSION['timer_start'] : null;
         $timer_paused = isset($_SESSION['timer_paused']) ? $_SESSION['timer_paused'] : false;
-        $timer_remaining = isset($_SESSION['timer_remaining']) ? (int)$_SESSION['timer_remaining'] : 10;
+        $timer_remaining = isset($_SESSION['timer_remaining']) ? (int)$_SESSION['timer_remaining'] : 60;
         
         $remaining = 10;
         $expired = false;
@@ -179,7 +185,8 @@ class OperatorPage extends Page {
     private function ajaxPauseTimer() {
         if (isset($_SESSION['timer_start']) && !$_SESSION['timer_paused']) {
             $elapsed = time() - $_SESSION['timer_start'];
-            $_SESSION['timer_remaining'] = max(0, 10 - $elapsed);
+            $_SESSION['timer_remaining'] = max(0, 60 - $elapsed);
+
             $_SESSION['timer_paused'] = true;
             $this->jsonResponse(true, 'Chronomètre en pause', 200, array('remaining' => $_SESSION['timer_remaining']));
         } else {
@@ -288,7 +295,10 @@ class OperatorPage extends Page {
             $_SESSION['selected_ticket_id'] = $ticketId;
             $_SESSION['timer_start'] = time();
             $_SESSION['timer_paused'] = false;
-            $_SESSION['timer_remaining'] = 10;
+            $_SESSION['timer_remaining'] = 60;
+            
+            // 🆕 SYNCHRONIZE WITH WAITING ROOM DISPLAY
+            $this->syncTicketToWaitingRoom( $ticket );
             
             $ticketHtml = $this->generateTicketDisplayHtml($ticket);
             $this->jsonResponse(true, 'Ticket sélectionné', 200, array('ticketHtml' => $ticketHtml));
@@ -338,6 +348,42 @@ class OperatorPage extends Page {
         unset($_SESSION['selected_ticket_id'], $_SESSION['services_served'], $_SESSION['selected_statuses'], $_SESSION['timer_start'], $_SESSION['timer_paused'], $_SESSION['timer_remaining']);
         $this->jsonResponse(true, 'Retour aux services', 200);
         return false;
+    }
+    
+    /**
+     * Synchronize selected ticket to waiting room display via display_main
+     * Called when operator selects a ticket
+     * Immediately updates the waiting room display with real-time sync
+     * 
+     * @param array $ticket The selected ticket data
+     */
+    private function syncTicketToWaitingRoom( $ticket ) {
+        try {
+            $db = $this->getDatabase();
+            if ( !$db ) return;
+            
+            if ( $db instanceof PDO ) {
+                // Extract ticket information
+                $ticket_number = $ticket['ticket_number'];
+                $desk_number = $this->getDesk()->getNumber();
+                
+                // Step 1: Clear existing display_main records
+                $clear_query = "DELETE FROM display_main";
+                $clear_stmt = $db->prepare( $clear_query );
+                $clear_stmt->execute();
+                
+                // Step 2: Insert new ticket into display_main for immediate synchronization
+                $insert_query = "INSERT INTO display_main (dm_ticket, dm_desk) VALUES (?, ?)";
+                $insert_stmt = $db->prepare( $insert_query );
+                $insert_stmt->bindValue( 1, $ticket_number, PDO::PARAM_STR );
+                $insert_stmt->bindValue( 2, $desk_number, PDO::PARAM_INT );
+                $insert_stmt->execute();
+                
+                error_log( "✅ [Salle Attente] Ticket synced - Number: " . $ticket_number . " | Desk: " . $desk_number );
+            }
+        } catch ( Exception $e ) {
+            error_log( "⚠️ [Salle Attente] Sync error: " . $e->getMessage() );
+        }
     }
     
     private function generateTicketsListHtml($tickets, $statuses = array()) {
@@ -883,4 +929,5 @@ body{font-family:"Inter",sans-serif;background:#f5f7fb;color:#1a1a2e;}
         })();';
     }
 }
+
 ?>

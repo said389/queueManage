@@ -30,6 +30,7 @@ class PageRouter {
         "application/loginPage" => "LoginPage",
         "application/logoutPage" => "LogoutPage",
         "application/opPage" => "OperatorPage",
+        "application/salleAttente" => "SalleAttentePage",
         # Device
         "device" => "DeviceMainPage",
         "device/desk" => "DeviceDisplayDesk",
@@ -73,3 +74,5 @@ class PageRouter {
         die('Page unkown in PageRouter');
     }
 }
+
+?>

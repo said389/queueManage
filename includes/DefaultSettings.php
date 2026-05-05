@@ -7,21 +7,21 @@ if ( !defined( 'ENTRY_POINT' ) ) {
 // This array contains editable settings by sysAdmin
 $gvEditableConfs = array(
 	// First and second entries need to be AdminCode and AdminPassword, always!
-	new EditableConf( 'gvSysAdminCode', '0000', 'Codice accesso sysAdmin' ),
-	new EditableConf( 'gvSysAdminPassword', 'admin0', 'Password accesso sysAdmin' ),
-	new EditableConf( 'gvMinPasswordLength', 6, 'Lunghezza minima password' ),
-	new EditableConf( 'gvSessionTimeout', 900, 'Durata sessione (sec)' ),
-	new EditableConf( 'gvTrashThreshold', 30, 'Soglia ticket trash (sec)' ),
-	new EditableConf( 'gvPhoneCodeLength', 4, 'Lunghezza codice di verifica web (max 40)' ),
-	new EditableConf( 'gvQueueLengthWebLimit', 10, 'Limite lunghezza coda per prenotazione web' ),
-	new EditableConf( 'gvQueueEtaWebLimit', 900, 'Limite attesa coda per prenotazione web (sec)' ),
-	new EditableConf( 'gvQueueLengthAppLimit', 5, 'Limite lunghezza coda per prenotazione app' ),
-	new EditableConf( 'gvQueueEtaAppLimit', 600, 'Limite attesa coda per prenotazione app (sec)' ),
-	new EditableConf( 'gvQrCodeMsg', 'Testo QrCode', 'Testo al lato del QrCode', 'textarea' ),
-	new EditableConf( 'gvSpotTitle', 'Titolo spot', 'Titolo dello spot del ticket' ),
-	new EditableConf( 'gvSpotBody', 'Testo dello spot', 'Testo dello spot del ticket', 'textarea' ),
-	new EditableConf( 'gvCallOtherTdWhenEmpty', true, 'Operatori in busy-mode' ),
-	new EditableConf( 'gvAllowPause', true, 'Abilita pulsante pausa per gli operatori' ),
+	new EditableConf( 'gvSysAdminCode', '0000', 'Code d\'accès administrateur' ),
+	new EditableConf( 'gvSysAdminPassword', 'admin0', 'Mot de passe administrateur' ),
+	new EditableConf( 'gvMinPasswordLength', 6, 'Longueur minimale du mot de passe' ),
+	new EditableConf( 'gvSessionTimeout', 900, 'Durée de session (sec)' ),
+	new EditableConf( 'gvTrashThreshold', 30, 'Seuil de suppression ticket (sec)' ),
+	new EditableConf( 'gvPhoneCodeLength', 4, 'Longueur du code de vérification web (max 40)' ),
+	new EditableConf( 'gvQueueLengthWebLimit', 10, 'Limite longueur file d\'attente pour réservation web' ),
+	new EditableConf( 'gvQueueEtaWebLimit', 900, 'Limite temps d\'attente file d\'attente pour réservation web (sec)' ),
+	new EditableConf( 'gvQueueLengthAppLimit', 5, 'Limite longueur file d\'attente pour réservation app' ),
+	new EditableConf( 'gvQueueEtaAppLimit', 600, 'Limite temps d\'attente file d\'attente pour réservation app (sec)' ),
+	new EditableConf( 'gvQrCodeMsg', 'Texte QrCode', 'Texte à côté du QrCode', 'textarea' ),
+	new EditableConf( 'gvSpotTitle', 'Titre du spot', 'Titre du spot du ticket' ),
+	new EditableConf( 'gvSpotBody', 'Texte du spot', 'Texte du spot du ticket', 'textarea' ),
+	new EditableConf( 'gvCallOtherTdWhenEmpty', true, 'Opérateurs en mode occupé' ),
+	new EditableConf( 'gvAllowPause', true, 'Activer le bouton pause pour les opérateurs' ),
 );
 
 

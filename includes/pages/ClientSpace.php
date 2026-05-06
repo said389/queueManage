@@ -1812,7 +1812,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             currentStep = stepNumber;
             updateProgress(stepNumber);
         }
-        
         function submitForm() {
             const name = document.getElementById('fullName').value.trim();
             const phone = document.getElementById('phone').value.trim();

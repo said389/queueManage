@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Description of OperatorPage - Version avec Chronomètre 10 secondes
+ * Description of OperatorPage - Version avec Chronomètre 10 secondes + Notifications
  *
  * @author sergio
  */
@@ -218,6 +218,10 @@ class OperatorPage extends Page {
         return false;
     }
     
+    /**
+     * 🆕 AJAX METHOD - Détecte les NOUVEAUX tickets avec notifications
+     * Filtrés par service respectif
+     */
     private function ajaxCheckNewTickets() {
         try {
             $lastCheck = (int)gfPostVar('lastCheck', 0);
@@ -234,16 +238,27 @@ class OperatorPage extends Page {
             if ($db instanceof PDO) {
                 $placeholders = array_fill(0, count($services), '?');
                 $serviceList = implode(",", $placeholders);
-                $query = "SELECT id, ticket_number, name, service, status, created_at FROM tickets WHERE service IN ($serviceList) AND UNIX_TIMESTAMP(created_at) > ? AND status IN ('waiting', 'standard', 'pregnant', 'disability') ORDER BY created_at DESC LIMIT 5";
+                $query = "SELECT id, ticket_number, name, service, status, created_at FROM tickets 
+                          WHERE service IN ($serviceList) 
+                          AND UNIX_TIMESTAMP(created_at) > ? 
+                          AND status IN ('waiting', 'standard', 'pregnant', 'disability') 
+                          ORDER BY created_at DESC LIMIT 5";
                 $stmt = $db->prepare($query);
                 $paramIndex = 1;
-                foreach ($services as $service) { $stmt->bindValue($paramIndex, trim($service), PDO::PARAM_STR); $paramIndex++; }
+                foreach ($services as $service) { 
+                    $stmt->bindValue($paramIndex, trim($service), PDO::PARAM_STR); 
+                    $paramIndex++; 
+                }
                 $stmt->bindValue($paramIndex, $lastCheck, PDO::PARAM_INT);
                 $stmt->execute();
                 $newTickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
-            $this->jsonResponse(true, 'Vérification effectuée', 200, array('newTickets' => $newTickets, 'timestamp' => time()));
+            $this->jsonResponse(true, 'Vérification effectuée', 200, array(
+                'newTickets' => $newTickets, 
+                'timestamp' => time(),
+                'count' => count($newTickets)
+            ));
             return false;
         } catch (Exception $e) {
             $this->jsonResponse(false, 'Erreur: ' . $e->getMessage(), 500);
@@ -694,7 +709,7 @@ class OperatorPage extends Page {
             }
         }
         
-        return '<div class="layout"><div class="operator-header"><div class="header-top"><div class="logo-section"><h1><i class="fas fa-rocket"></i> FastQueue</h1><span class="operator-badge">Opérateur</span></div><div class="header-links"><a href="' . $gvPath . '/application/help" class="header-link"><i class="fas fa-question-circle"></i> Aide</a><a href="' . $gvPath . '/application/logoutPage" class="header-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div></div><div class="operator-info-bar"><div class="info-item"><i class="fas fa-user-circle"></i><div><span class="info-label">Opérateur</span><span class="info-value">' . htmlspecialchars($operator->getFullName(), ENT_QUOTES, 'UTF-8') . '</span></div></div><div class="info-item"><i class="fas fa-id-badge"></i><div><span class="info-label">Code</span><span class="info-value">' . htmlspecialchars($operator->getCode(), ENT_QUOTES, 'UTF-8') . '</span></div></div><div class="info-item"><i class="fas fa-desktop"></i><div><span class="info-label">Compteur</span><span class="info-value">' . htmlspecialchars($desk->getNumber(), ENT_QUOTES, 'UTF-8') . '</span></div></div><div class="info-item"><i class="fas fa-layer-group"></i><div><span class="info-label">Services servis</span><span class="info-value" id="services-served-display">' . htmlspecialchars($servicesServedText, ENT_QUOTES, 'UTF-8') . '</span></div></div></div></div><main class="operator-main"><div class="content-container"><div id="main-content" class="main-content">' . $pMessage . $servicesSelectionBlock . $ticketsListBlock . $ticketDisplayBlock . '</div></div></main></div>';
+        return '<div class="layout"><div class="operator-header"><div class="header-top"><div class="logo-section"><h1><i class="fas fa-rocket"></i> FastQueue</h1><span class="operator-badge">Opérateur</span></div><div class="header-links"><a href="' . $gvPath . '/application/help" class="header-link"><i class="fas fa-question-circle"></i> Aide</a><a href="' . $gvPath . '/application/logoutPage" class="header-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div></div><div class="operator-info-bar"><div class="info-item"><i class="fas fa-user-circle"></i><div><span class="info-label">Opérateur</span><span class="info-value">' . htmlspecialchars($operator->getFullName(), ENT_QUOTES, 'UTF-8') . '</span></div></div><div class="info-item"><i class="fas fa-id-badge"></i><div><span class="info-label">Code</span><span class="info-value">' . htmlspecialchars($operator->getCode(), ENT_QUOTES, 'UTF-8') . '</span></div></div><div class="info-item"><i class="fas fa-desktop"></i><div><span class="info-label">Compteur</span><span class="info-value">' . htmlspecialchars($desk->getNumber(), ENT_QUOTES, 'UTF-8') . '</span></div></div><div class="info-item"><i class="fas fa-layer-group"></i><div><span class="info-label">Services servis</span><span class="info-value" id="services-served-display">' . htmlspecialchars($servicesServedText, ENT_QUOTES, 'UTF-8') . '</span></div></div></div></div><main class="operator-main"><div class="content-container"><div id="main-content" class="main-content">' . $pMessage . $servicesSelectionBlock . $ticketsListBlock . $ticketDisplayBlock . '</div></div></main><div id="notification-container" class="notification-container"></div></div>';
     }
     
     private function getTicketsListBlock() {
@@ -829,8 +844,29 @@ body{font-family:"Inter",sans-serif;background:#f5f7fb;color:#1a1a2e;}
 @keyframes slideDown{from{transform:translateY(-10px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 .loading{display:inline-block;width:20px;height:20px;border:3px solid #f3f3f3;border-top:3px solid #6C63FF;border-radius:50%;animation:spin 1s linear infinite;}
 @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
-@media(max-width:768px){.header-top{padding:16px 24px;flex-direction:column;}.operator-info-bar{padding:20px 24px;}.operator-main{padding:24px;}.button-group{flex-direction:column;}.btn{width:100%;}.ticket-number span{font-size:48px;}.ticket-header{flex-direction:column;text-align:center;}}
-@media(max-width:480px){.operator-main{padding:16px;}.card{padding:20px;}.ticket-header h2{font-size:18px;}.timer-simple{font-size:12px;}.timer-simple span{font-size:14px;}.ticket-number span{font-size:36px;}}
+.notification-container{position:fixed;top:20px;right:20px;z-index:9999;max-width:400px;}
+.notification{background:white;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);border-left:5px solid;display:flex;align-items:flex-start;gap:12px;animation:slideInRight 0.4s ease;}
+.notification.new-ticket{border-left-color:#6C63FF;background:linear-gradient(135deg,#f8f7ff,#ffffff);}
+.notification.info{border-left-color:#00a8ff;}
+.notification.success{border-left-color:#2ecc71;}
+.notification.warning{border-left-color:#ffc107;}
+.notification-icon{font-size:20px;flex-shrink:0;margin-top:2px;}
+.notification.new-ticket .notification-icon{color:#6C63FF;}
+.notification.info .notification-icon{color:#00a8ff;}
+.notification.success .notification-icon{color:#2ecc71;}
+.notification.warning .notification-icon{color:#ffc107;}
+.notification-content{flex:1;}
+.notification-title{font-weight:700;color:#1a1a2e;margin-bottom:4px;font-size:14px;}
+.notification-message{font-size:13px;color:#666;margin-bottom:8px;}
+.notification-details{font-size:12px;color:#999;display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.notification-detail-item{display:flex;align-items:center;gap:4px;}
+.notification-detail-item i{color:#6C63FF;font-size:11px;}
+.notification-close{background:none;border:none;color:#ccc;cursor:pointer;font-size:18px;padding:0;flex-shrink:0;transition:color 0.2s ease;}
+.notification-close:hover{color:#999;}
+@keyframes slideInRight{from{transform:translateX(400px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes slideOutRight{from{transform:translateX(0);opacity:1;}to{transform:translateX(400px);opacity:0;}}
+@media(max-width:768px){.header-top{padding:16px 24px;flex-direction:column;}.operator-info-bar{padding:20px 24px;}.operator-main{padding:24px;}.button-group{flex-direction:column;}.btn{width:100%;}.ticket-number span{font-size:48px;}.ticket-header{flex-direction:column;text-align:center;}.notification-container{left:10px;right:10px;max-width:none;top:10px;}}
+@media(max-width:480px){.operator-main{padding:16px;}.card{padding:20px;}.ticket-header h2{font-size:18px;}.timer-simple{font-size:12px;}.timer-simple span{font-size:14px;}.ticket-number span{font-size:36px;}.notification{padding:12px;}.notification-title{font-size:13px;}.notification-message{font-size:12px;}.notification-details{grid-template-columns:1fr;}}
 </style></head><body><script src="https://code.jquery.com/jquery-3.6.0.min.js"></script><script>' . $this->getJavaScriptCode() . '</script></body></html>';
     }
     
@@ -845,8 +881,90 @@ body{font-family:"Inter",sans-serif;background:#f5f7fb;color:#1a1a2e;}
             var currentTicketId = null;
             var timerRunning = false;
             var timerPaused = false;
+            var processedTicketIds = {};
             
             function showLoading() { $("#main-content").html(\'<div style="text-align:center;padding:40px;"><div class="loading"></div><p>Chargement...</p></div>\'); }
+            
+            /**
+             * 🆕 NOTIFICATION SYSTEM - Affiche les notifications pour nouveaux tickets
+             * Avec son, animation et fermeture automatique
+             */
+            function showNotification(title, message, details, type = "new-ticket") {
+                var notificationHtml = \'<div class="notification \' + type + \'">\' +
+                    \'<i class="fas \' + (type === "new-ticket" ? "fa-bell" : "fa-info-circle") + \' notification-icon"></i>\' +
+                    \'<div class="notification-content">\' +
+                    \'<div class="notification-title">\' + title + \'</div>\' +
+                    \'<div class="notification-message">\' + message + \'</div>\';
+                
+                if (details) {
+                    notificationHtml += \'<div class="notification-details">\';
+                    for (var key in details) {
+                        if (details.hasOwnProperty(key)) {
+                            var iconClass = "";
+                            if (key.includes("Ticket")) iconClass = "fa-ticket";
+                            else if (key.includes("Service")) iconClass = "fa-briefcase";
+                            else if (key.includes("Client")) iconClass = "fa-user";
+                            notificationHtml += \'<div class="notification-detail-item"><i class="fas \' + iconClass + \'"></i> <span><strong>\' + key + \':</strong> \' + details[key] + \'</span></div>\';
+                        }
+                    }
+                    notificationHtml += \'</div>\';
+                }
+                
+                notificationHtml += \'</div>\' +
+                    \'<button type="button" class="notification-close"><i class="fas fa-times"></i></button>\' +
+                    \'</div>\';
+                
+                var $notification = $(notificationHtml);
+                $("#notification-container").append($notification);
+                
+                // 🔊 Play notification sound
+                playNotificationSound();
+                
+                // Close button
+                $notification.find(".notification-close").on("click", function() {
+                    $notification.css("animation", "slideOutRight 0.4s ease").on("animationend", function() {
+                        $(this).remove();
+                    });
+                });
+                
+                // Auto-remove after 8 seconds
+                setTimeout(function() {
+                    if ($notification.parent().length) {
+                        $notification.css("animation", "slideOutRight 0.4s ease").on("animationend", function() {
+                            $(this).remove();
+                        });
+                    }
+                }, 8000);
+            }
+            
+            /**
+             * 🔊 SOUND NOTIFICATION - Joue un son pour les nouveaux tickets
+             */
+            function playNotificationSound() {
+                try {
+                    var audioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!audioContext) return;
+                    
+                    var ctx = new audioContext();
+                    var oscillator = ctx.createOscillator();
+                    var gainNode = ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    oscillator.frequency.value = 800;
+                    oscillator.type = "sine";
+                    
+                    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                    
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.5);
+                } catch (e) {
+                    console.log("Sound notification not available");
+                }
+            }
+            
             function showMessage(message, type) { var icon = type === "success" ? "fa-check-circle" : "fa-exclamation-circle"; var alertClass = type === "success" ? "alert-success" : "alert-error"; var alert = \'<div class="alert \' + alertClass + \'"><i class="fas \' + icon + \'"></i> \' + message + \'</div>\'; $("#main-content").prepend(alert); setTimeout(function() { $("#main-content > .alert").fadeOut(300, function() { $(this).remove(); }); }, 3000); }
             
             function startTimer() {
@@ -909,12 +1027,56 @@ body{font-family:"Inter",sans-serif;background:#f5f7fb;color:#1a1a2e;}
                     });
                 }
             }
-            function checkNewTickets() { if (selectedServices.length === 0) return; $.ajax({ url: location.pathname, method: "POST", dataType: "json", headers: {"X-Requested-With": "XMLHttpRequest"}, data: {action: "check_new_tickets", lastCheck: lastCheckTime}, success: function(response) { if (response.success && response.newTickets && response.newTickets.length > 0) lastCheckTime = response.timestamp; } }); }
+            
+            /**
+             * 🆕 CHECK NEW TICKETS WITH NOTIFICATION
+             * Affiche une notification pour chaque nouveau ticket détecté
+             */
+            function checkNewTickets() { 
+                if (selectedServices.length === 0) return; 
+                $.ajax({ 
+                    url: location.pathname, 
+                    method: "POST", 
+                    dataType: "json", 
+                    headers: {"X-Requested-With": "XMLHttpRequest"}, 
+                    data: {action: "check_new_tickets", lastCheck: lastCheckTime}, 
+                    success: function(response) { 
+                        if (response.success && response.newTickets && response.newTickets.length > 0) {
+                            response.newTickets.forEach(function(ticket) {
+                                if (!processedTicketIds[ticket.id]) {
+                                    processedTicketIds[ticket.id] = true;
+                                    
+                                    var statusLabel = "";
+                                    switch(ticket.status) {
+                                        case "pregnant": statusLabel = "👶 Femme enceinte"; break;
+                                        case "disability": statusLabel = "♿ PMR/Handicap"; break;
+                                        case "standard": statusLabel = "👤 Standard"; break;
+                                        default: statusLabel = "⏳ En attente"; break;
+                                    }
+                                    
+                                    showNotification(
+                                        "🎫 Nouveau ticket: " + ticket.ticket_number,
+                                        "Un nouveau ticket est arrivé dans la file d\'attente",
+                                        {
+                                            "Service": ticket.service,
+                                            "Client": ticket.name,
+                                            "Statut": statusLabel
+                                        },
+                                        "new-ticket"
+                                    );
+                                }
+                            });
+                            lastCheckTime = response.timestamp;
+                        }
+                    } 
+                }); 
+            }
+            
             function updateServicesDisplay() { var text = selectedServices.length > 0 ? selectedServices.join(", ") : "Aucun"; $("#services-served-display").text(text); }
             function attachTicketListeners() { $(".ticket-item").off("click").on("click", function() { $(".ticket-item").removeClass("selected"); $(this).addClass("selected"); selectedTicketId = $(this).data("ticket-id"); }); }
             function attachFilterListeners() { $(".status-filter-checkbox").off("change").on("change", function() { selectedStatuses = []; $(".status-filter-checkbox:checked").each(function() { selectedStatuses.push($(this).val()); }); if (selectedStatuses.length === 0) selectedStatuses = ["waiting", "standard", "pregnant", "disability"]; filterTickets(); }); }
             function attachServiceListeners() { $("#btn-show-tickets").off("click").on("click", function() { selectedServices = []; $(".service-checkbox:checked").each(function() { selectedServices.push($(this).val()); }); if (selectedServices.length === 0) { showMessage("Sélectionnez au moins un service", "error"); return; } updateServicesDisplay(); showLoading(); getTickets(); startNotificationCheck(); }); }
-            function startNotificationCheck() { if (checkInterval) clearInterval(checkInterval); checkNewTickets(); checkInterval = setInterval(checkNewTickets, 5000); }
+            function startNotificationCheck() { if (checkInterval) clearInterval(checkInterval); processedTicketIds = {}; lastCheckTime = Math.floor(Date.now() / 1000); checkNewTickets(); checkInterval = setInterval(checkNewTickets, 5000); }
             function stopNotificationCheck() { if (checkInterval) { clearInterval(checkInterval); checkInterval = null; } }
             function attachListControls() { $("#btn-select-ticket").off("click").on("click", function() { if (!selectedTicketId) { showMessage("Sélectionnez un ticket", "error"); return; } selectTicket(selectedTicketId); }); $("#btn-back-services").off("click").on("click", function() { backToServices(); }); }
             function attachTicketControls() { $("#btn-finish-ticket").off("click").on("click", function() { finishTicket(currentTicketId); }); $("#btn-client-absent").off("click").on("click", function() { clientAbsent(); }); $("#btn-pause-timer").off("click").on("click", function() { pauseTimer(); }); $("#btn-resume-timer").off("click").on("click", function() { resumeTimer(); }); $("#btn-back-list").off("click").on("click", function() { stopTimer(); backToList(); }); }

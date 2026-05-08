@@ -46,7 +46,7 @@ class OperatorPage extends Page {
                 $_SESSION['selected_ticket_id'] = $this->selected_ticket_id;
                 $_SESSION['timer_start'] = time();
                 $_SESSION['timer_paused'] = false;
-                $_SESSION['timer_remaining'] = 10;
+                $_SESSION['timer_remaining'] = 60;
                 $this->ticket_served = $this->getTicketById( $this->selected_ticket_id );
                 return true;
             }
@@ -157,7 +157,7 @@ class OperatorPage extends Page {
     private function ajaxGetTimerStatus() {
         $timer_start = isset($_SESSION['timer_start']) ? (int)$_SESSION['timer_start'] : null;
         $timer_paused = isset($_SESSION['timer_paused']) ? $_SESSION['timer_paused'] : false;
-        $timer_remaining = isset($_SESSION['timer_remaining']) ? (int)$_SESSION['timer_remaining'] : 10;
+        $timer_remaining = isset($_SESSION['timer_remaining']) ? (int)$_SESSION['timer_remaining'] : 60;
         
         $remaining = 10;
         $expired = false;
@@ -179,7 +179,8 @@ class OperatorPage extends Page {
     private function ajaxPauseTimer() {
         if (isset($_SESSION['timer_start']) && !$_SESSION['timer_paused']) {
             $elapsed = time() - $_SESSION['timer_start'];
-            $_SESSION['timer_remaining'] = max(0, 10 - $elapsed);
+$_SESSION['timer_remaining'] = max(0, 60 - $elapsed);
+
             $_SESSION['timer_paused'] = true;
             $this->jsonResponse(true, 'Chronomètre en pause', 200, array('remaining' => $_SESSION['timer_remaining']));
         } else {
@@ -288,7 +289,7 @@ class OperatorPage extends Page {
             $_SESSION['selected_ticket_id'] = $ticketId;
             $_SESSION['timer_start'] = time();
             $_SESSION['timer_paused'] = false;
-            $_SESSION['timer_remaining'] = 10;
+            $_SESSION['timer_remaining'] = 60;
             
             $ticketHtml = $this->generateTicketDisplayHtml($ticket);
             $this->jsonResponse(true, 'Ticket sélectionné', 200, array('ticketHtml' => $ticketHtml));

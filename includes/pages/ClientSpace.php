@@ -4,6 +4,9 @@
  * ✅ Numérotation intelligente par service (S-1, S-2, etc.)
  * ✅ Réinitialisation quotidienne automatique
  * ✅ Impression optimisée avec persistance du numéro
+ * ✅ CORRIGÉ: Race condition éliminée avec transaction + FOR UPDATE
+ * ✅ TRADUCTION COMPLÈTE: Cercles + toute l'interface selon langue choisie
+ * ✅ RTL: Barre de progression inversée pour l'arabe
  */
 
 session_start();
@@ -21,7 +24,7 @@ if (!isset($_SESSION['language'])) {
     $_SESSION['language'] = 'fr';
 }
 
-// Traductions
+// Traductions complètes
 $translations = [
     'fr' => [
         'welcome' => 'Bienvenue à Smart Queue Management',
@@ -49,6 +52,15 @@ $translations = [
         'change_language' => 'Changer de langue',
         'form_info' => 'Veuillez saisir vos informations',
         'ticket_confirmed' => 'Ticket généré avec succès',
+        'new_ticket' => 'Nouveau ticket',
+        'select_service_first' => 'Veuillez sélectionner un service',
+        'processing' => 'Traitement...',
+        'printing' => 'Impression...',
+        'step1' => 'ACCUEIL',
+        'step2' => 'SERVICE',
+        'step3' => 'INFOS',
+        'step4' => 'TICKET',
+        'date_time' => 'Date/Heure'
     ],
     'ar' => [
         'welcome' => 'مرحبا بك في نظام إدارة الطوابير الذكية',
@@ -76,33 +88,51 @@ $translations = [
         'change_language' => 'تغيير اللغة',
         'form_info' => 'يرجى إدخال معلوماتك',
         'ticket_confirmed' => 'تم إنشاء التذكرة بنجاح',
+        'new_ticket' => 'تذكرة جديدة',
+        'select_service_first' => 'الرجاء اختيار خدمة',
+        'processing' => 'جاري المعالجة...',
+        'printing' => 'جاري الطباعة...',
+        'step1' => 'الرئيسية',
+        'step2' => 'الخدمة',
+        'step3' => 'المعلومات',
+        'step4' => 'التذكرة',
+        'date_time' => 'التاريخ/الوقت'
     ],
     'en' => [
         'welcome' => 'Welcome to Smart Queue Management',
-        'select_language' => 'Select Your Language',
+        'select_language' => 'Select your language',
         'arabic' => 'العربية',
         'french' => 'Français',
         'english' => 'English',
         'italian' => 'Italiano',
         'scan_qr' => 'Scan this QR code to continue on mobile',
-        'select_service' => 'Select a Service',
+        'select_service' => 'Select a service',
         'next' => 'Next',
         'back' => 'Back',
-        'full_name' => 'Full Name',
+        'full_name' => 'Full name',
         'phone' => 'Phone',
         'status' => 'Status',
         'standard' => 'Standard',
-        'pregnant' => 'Pregnant Woman',
-        'disability' => 'Person with Disability',
-        'print_ticket' => 'Print Ticket',
+        'pregnant' => 'Pregnant',
+        'disability' => 'Disability',
+        'print_ticket' => 'Print ticket',
         'error_empty' => 'All fields are required',
-        'ticket_number' => 'Ticket Number',
+        'ticket_number' => 'Ticket number',
         'service' => 'Service',
         'domain' => 'Domain',
         'priority' => 'Priority',
-        'change_language' => 'Change Language',
+        'change_language' => 'Change language',
         'form_info' => 'Please enter your information',
         'ticket_confirmed' => 'Ticket generated successfully',
+        'new_ticket' => 'New ticket',
+        'select_service_first' => 'Please select a service',
+        'processing' => 'Processing...',
+        'printing' => 'Printing...',
+        'step1' => 'HOME',
+        'step2' => 'SERVICE',
+        'step3' => 'INFO',
+        'step4' => 'TICKET',
+        'date_time' => 'Date/Time'
     ],
     'it' => [
         'welcome' => 'Benvenuto in Smart Queue Management',
@@ -111,67 +141,74 @@ $translations = [
         'french' => 'Français',
         'english' => 'English',
         'italian' => 'Italiano',
-        'scan_qr' => 'Scansiona questo codice QR per continuare su mobile',
+        'scan_qr' => 'Scansiona questo codice QR per continuare sul mobile',
         'select_service' => 'Seleziona un servizio',
         'next' => 'Avanti',
         'back' => 'Indietro',
-        'full_name' => 'Nome Completo',
+        'full_name' => 'Nome completo',
         'phone' => 'Telefono',
         'status' => 'Stato',
         'standard' => 'Standard',
-        'pregnant' => 'Donna Incinta',
-        'disability' => 'Persona Disabile',
-        'print_ticket' => 'Stampa Biglietto',
+        'pregnant' => 'In attesa',
+        'disability' => 'Disabilità',
+        'print_ticket' => 'Stampa biglietto',
         'error_empty' => 'Tutti i campi sono obbligatori',
-        'ticket_number' => 'Numero di Biglietto',
+        'ticket_number' => 'Numero del biglietto',
         'service' => 'Servizio',
         'domain' => 'Dominio',
         'priority' => 'Priorità',
-        'change_language' => 'Cambia Lingua',
+        'change_language' => 'Cambia lingua',
         'form_info' => 'Inserisci le tue informazioni',
         'ticket_confirmed' => 'Biglietto generato con successo',
+        'new_ticket' => 'Nuovo biglietto',
+        'select_service_first' => 'Seleziona un servizio',
+        'processing' => 'Elaborazione...',
+        'printing' => 'Stampa in corso...',
+        'step1' => 'HOME',
+        'step2' => 'SERVIZIO',
+        'step3' => 'INFO',
+        'step4' => 'BIGLIETTO',
+        'date_time' => 'Data/Ora'
     ]
 ];
 
 $lang = $_SESSION['language'];
 $t = $translations[$lang];
+$isRTL = ($lang === 'ar');
+
+// ═══════════════════════════════════════════════════════════════════════
+// FONCTION UTILITAIRE : Créer une connexion PDO
+// ═══════════════════════════════════════════════════════════════════════
+function createPDO(): PDO {
+    $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
+    return new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_TIMEOUT            => 5,
+    ]);
+}
 
 // Récupérer les domaines
-$domaines = [];
-$db_error = null;
+$domaines  = [];
+$db_error  = null;
 
 try {
-    $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
-    
-    $pdo = new PDO(
-        $dsn,
-        DB_USER,
-        DB_PASS,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_TIMEOUT => 5
-        ]
-    );
-    
-    // Vérifier que la table existe
+    $pdo = createPDO();
+
     $tableCheck = $pdo->query("SHOW TABLES LIKE 'topical_domain'");
     if ($tableCheck->rowCount() === 0) {
         $db_error = "Table 'topical_domain' introuvable";
     } else {
-        // Récupérer les domaines ACTIFS avec leur code
         $stmt = $pdo->prepare(
-            "SELECT td_id as id, td_name as nom, td_description as description, td_code as code
-             FROM topical_domain 
-             WHERE td_active = 1 
+            "SELECT td_id AS id, td_name AS nom, td_description AS description, td_code AS code
+             FROM topical_domain
+             WHERE td_active = 1
              ORDER BY td_name ASC"
         );
         $stmt->execute();
         $domaines = $stmt->fetchAll();
-        
         error_log("✅ Connexion réussie! Domaines trouvés: " . count($domaines));
     }
-    
 } catch (PDOException $e) {
     $db_error = "Erreur BD: " . $e->getMessage();
     error_log("❌ " . $db_error);
@@ -183,128 +220,109 @@ try {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
-    
+
     $action = $_POST['action'] ?? '';
-    
+
+    // ── Langue ─────────────────────────────────────────────────────
     if ($action === 'set_language') {
-        $_SESSION['language'] = $_POST['language'];
-        echo json_encode(['success' => true]);
+        $allowed = ['fr', 'ar', 'en', 'it'];
+        $newLang = $_POST['language'] ?? '';
+        if (in_array($newLang, $allowed, true)) {
+            $_SESSION['language'] = $newLang;
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Langue invalide']);
+        }
         exit;
     }
-    
+
+    // ── Service ────────────────────────────────────────────────────
     if ($action === 'set_service') {
-        $_SESSION['service'] = $_POST['service'];
+        $_SESSION['service']      = $_POST['service']      ?? '';
         $_SESSION['service_code'] = $_POST['service_code'] ?? '';
         echo json_encode(['success' => true]);
         exit;
     }
-    
+
+    // ── Sauvegarde ticket ──────────────────────────────────────────
     if ($action === 'save_ticket') {
-        $name = $_POST['name'] ?? '';
-        $phone = $_POST['phone'] ?? '';
-        $status = $_POST['status'] ?? '';
-        $service = $_POST['service'] ?? '';
-        $serviceCode = $_POST['service_code'] ?? '';
-        
+        $name        = trim($_POST['name']         ?? '');
+        $phone       = trim($_POST['phone']        ?? '');
+        $status      = trim($_POST['status']       ?? '');
+        $service     = trim($_POST['service']      ?? '');
+        $serviceCode = strtoupper(trim($_POST['service_code'] ?? ''));
+
         if (empty($name) || empty($phone) || empty($status) || empty($service) || empty($serviceCode)) {
             echo json_encode(['success' => false, 'message' => $t['error_empty']]);
             exit;
         }
-        
+
         if (!preg_match('/^[0-9\s\-\+\(\)]{8,}$/', $phone)) {
             echo json_encode(['success' => false, 'message' => 'Numéro de téléphone invalide']);
             exit;
         }
-        
+
         try {
-            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
-            
-            $pdo = new PDO(
-                $dsn,
-                DB_USER,
-                DB_PASS,
-                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-            
-            // ═════════════════════════════════════════════════════════════
-            // 1️⃣ GÉNÉRER LE NUMÉRO DE TICKET AVEC FORMAT COURT
-            // ═════════════════════════════════════════════════════════════
-            // Format: SERVICE_CODE-NUMERO (ex: S-1, S-2, ACC-15, etc.)
-            
+            $pdo  = createPDO();
             $today = date('Y-m-d');
-            $serviceCode = strtoupper(trim($serviceCode));
-            
-            // Vérifier et créer la table de comptage si elle n'existe pas
+
             $pdo->exec(
                 "CREATE TABLE IF NOT EXISTS ticket_counter (
-                    tc_id INT PRIMARY KEY AUTO_INCREMENT,
-                    tc_service_code VARCHAR(10) NOT NULL UNIQUE,
-                    tc_date DATE NOT NULL,
-                    tc_count INT DEFAULT 0,
-                    UNIQUE KEY unique_service_date (tc_service_code, tc_date)
-                ) ENGINE=InnoDB DEFAULT CHARSET=" . DB_CHARSET
+                    tc_id           INT PRIMARY KEY AUTO_INCREMENT,
+                    tc_service_code VARCHAR(10)  NOT NULL,
+                    tc_date         DATE         NOT NULL,
+                    tc_count        INT UNSIGNED NOT NULL DEFAULT 0,
+                    UNIQUE KEY uq_service_date (tc_service_code, tc_date)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
             );
-            
-            // Récupérer ou créer le compteur pour le service d'aujourd'hui
+
+            $pdo->beginTransaction();
+
             $stmt = $pdo->prepare(
-                "SELECT tc_count FROM ticket_counter 
-                 WHERE tc_service_code = :service_code AND tc_date = :date"
+                "INSERT INTO ticket_counter (tc_service_code, tc_date, tc_count)
+                 VALUES (:code, :date, 1)
+                 ON DUPLICATE KEY UPDATE
+                     tc_count = LAST_INSERT_ID(tc_count + 1)"
             );
             $stmt->execute([
-                'service_code' => $serviceCode,
-                'date' => $today
-            ]);
-            
-            $result = $stmt->fetch();
-            $nextNumber = ($result ? $result['tc_count'] : 0) + 1;
-            
-            // Générer le numéro de ticket au format court
-            $ticket_number = $serviceCode . '-' . $nextNumber;
-            
-            // Mettre à jour ou insérer le compteur
-            $stmt = $pdo->prepare(
-                "INSERT INTO ticket_counter (tc_service_code, tc_date, tc_count) 
-                 VALUES (:service_code, :date, :count)
-                 ON DUPLICATE KEY UPDATE tc_count = tc_count + 1"
-            );
-            
-            $stmt->execute([
-                'service_code' => $serviceCode,
+                'code' => $serviceCode,
                 'date' => $today,
-                'count' => $nextNumber
             ]);
-            
-            // ═════════════════════════════════════════════════════════════
-            // 2️⃣ INSÉRER LE TICKET DANS LA TABLE TICKETS
-            // ═════════════════════════════════════════════════════════════
-            
+
+            $nextNumber    = (int) $pdo->query("SELECT LAST_INSERT_ID()")->fetchColumn();
+            $ticket_number = $serviceCode . '-' . $nextNumber;
+
             $stmt = $pdo->prepare(
-                "INSERT INTO tickets (ticket_number, name, phone, status, service, created_at) 
+                "INSERT INTO tickets (ticket_number, name, phone, status, service, created_at)
                  VALUES (:ticket_number, :name, :phone, :status, :service, :created_at)"
             );
-            
             $stmt->execute([
                 'ticket_number' => $ticket_number,
-                'name' => $name,
-                'phone' => $phone,
-                'status' => $status,
-                'service' => $service,
-                'created_at' => date('Y-m-d H:i:s')
+                'name'          => $name,
+                'phone'         => $phone,
+                'status'        => $status,
+                'service'       => $service,
+                'created_at'    => date('Y-m-d H:i:s'),
             ]);
-            
+
+            $pdo->commit();
+
             error_log("✅ Ticket créé: $ticket_number pour $name");
-            
+
             echo json_encode([
-                'success' => true,
-                'ticket_number' => $ticket_number,
-                'name' => $name,
-                'phone' => $phone,
-                'status' => $status,
-                'service' => $service,
-                'service_code' => $serviceCode
+                'success'      => true,
+                'ticket_number'=> $ticket_number,
+                'name'         => $name,
+                'phone'        => $phone,
+                'status'       => $status,
+                'service'      => $service,
+                'service_code' => $serviceCode,
             ]);
-            
+
         } catch (Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             error_log('❌ Erreur sauvegarde ticket: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Erreur: ' . $e->getMessage()]);
         }
@@ -313,7 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo $lang; ?>" dir="<?php echo $lang === 'ar' ? 'rtl' : 'ltr'; ?>">
+<html lang="<?php echo $lang; ?>" dir="<?php echo $isRTL ? 'rtl' : 'ltr'; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -321,1200 +339,177 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #5a67d8; --accent: #6b5ce7; --success: #48bb78; --bg-light: #f7fafc; --border-light: #e2e8f0; --text-dark: #1e293b; --text-light: #64748b; --shadow-sm: 0 1px 3px rgba(0,0,0,0.08); --shadow-md: 0 4px 12px rgba(0,0,0,0.12); --shadow-lg: 0 8px 24px rgba(0,0,0,0.15); --shadow-xl: 0 16px 40px rgba(0,0,0,0.18); }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 50%, #e6f0ff 100%); min-height: 100vh; color: var(--text-dark); }
+        .container-main { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .progress-container { margin-bottom: 48px; position: relative; width: 100%; }
+        .progress-steps { display: flex; justify-content: space-between; align-items: flex-start; position: relative; width: 100%; }
+        
+        /* Ligne de fond entre les cercles */
+        .progress-steps::before {
+            content: '';
+            position: absolute;
+            top: 22px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            z-index: 1;
         }
         
-        :root {
-            --primary: #5a67d8;
-            --primary-dark: #4c51bf;
-            --primary-light: #667eea;
-            --accent: #6b5ce7;
-            --accent-dark: #5a4fd1;
-            --success: #48bb78;
-            --bg-light: #f7fafc;
-            --bg-lighter: #edf2f7;
-            --bg-dark: #2d3748;
-            --border-light: #cbd5e0;
-            --border-med: #a0aec0;
-            --text-dark: #1a202c;
-            --text-light: #718096;
-            --text-lighter: #a0aec0;
-            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
-            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
-            --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.18);
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 50%, #e6f0ff 100%);
-            min-height: 100vh;
-            color: var(--text-dark);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-        
-        .container-main {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* STEPPER - Indicateur de Progression */
-        /* ═════════════════════════════════════════════════════════════ */
-        .progress-container {
-            margin-bottom: 48px;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 2px;
-            background: var(--border-light);
-            border-radius: 1px;
-            overflow: hidden;
-            margin-bottom: 28px;
-            position: relative;
-        }
-        
-        .progress-fill {
-            height: 100%;
+        /* Barre de progression qui se remplit - version LTR (gauche vers droite) */
+        .progress-steps::after {
+            content: '';
+            position: absolute;
+            top: 22px;
+            left: 0;
+            width: 0%;
+            height: 3px;
             background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
-            border-radius: 1px;
-            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 12px rgba(90, 103, 216, 0.4);
-        }
-        
-        .progress-steps {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-        }
-        
-        .progress-step {
-            flex: 1;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .progress-step-circle {
-            width: 40px;
-            height: 40px;
-            background: white;
-            border: 2px solid var(--border-light);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-light);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--shadow-sm);
-            position: relative;
+            border-radius: 3px;
+            transition: width 0.5s ease;
             z-index: 2;
         }
         
-        .progress-step.active .progress-step-circle {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            border-color: transparent;
-            color: white;
-            box-shadow: var(--shadow-md), 0 0 20px rgba(90, 103, 216, 0.3);
-            transform: scale(1.1);
-        }
-        
-        .progress-step.completed .progress-step-circle {
-            background: var(--success);
-            border-color: var(--success);
-            color: white;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .progress-step-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-light);
-            text-align: center;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            opacity: 0.8;
-            transition: all 0.3s ease;
-        }
-        
-        .progress-step.active .progress-step-label,
-        .progress-step.completed .progress-step-label {
-            opacity: 1;
-            color: var(--text-dark);
-            font-weight: 700;
-        }
-        
-        .progress-step:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            right: -50%;
-            height: 2px;
-            background: var(--border-light);
-            z-index: 1;
-            transition: background 0.3s ease;
-        }
-        
-        .progress-step.completed:not(:last-child)::after {
-            background: var(--success);
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* CARD - Conteneur Principal */
-        /* ═════════════════════════════════════════════════════════════ */
-        .card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: var(--shadow-xl);
-            padding: 56px;
-            max-width: 640px;
-            width: 100%;
-            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(24px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
-        @keyframes scaleIn {
-            from {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-        
-        @keyframes ticketPulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.02);
-            }
-        }
-        
-        .step {
-            display: none;
-        }
-        
-        .step.active {
-            display: block;
-            animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        h1 {
-            font-size: 36px;
-            font-weight: 800;
-            color: var(--text-dark);
-            text-align: center;
-            margin-bottom: 12px;
-            letter-spacing: -0.8px;
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: var(--text-light);
-            margin-bottom: 36px;
-            font-size: 15px;
-            font-weight: 500;
-            letter-spacing: 0.3px;
-            line-height: 1.5;
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* QR CODE SECTION */
-        /* ═════════════════════════════════════════════════════════════ */
-        .qr-container {
-            text-align: center;
-            margin-bottom: 36px;
-            padding: 36px;
-            background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-lighter) 100%);
-            border: 1px solid var(--border-light);
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
-        }
-        
-        .qr-container p {
-            margin-bottom: 24px;
-            font-size: 14px;
-            color: var(--text-light);
-            font-weight: 500;
-        }
-        
-        #qrcode {
-            display: inline-block;
-            padding: 16px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* LANGUAGE SELECTOR TOGGLE - Menu Escamotable Premium */
-        /* ═════════════════════════════════════════════════════════════ */
-        .language-selector {
-            position: fixed;
-            bottom: 32px;
-            right: 32px;
-            z-index: 1000;
-        }
-        
-        html[dir="rtl"] .language-selector {
-            right: auto;
-            left: 32px;
-        }
-        
-        .language-toggle-btn-float {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            box-shadow: var(--shadow-lg), 0 0 24px rgba(90, 103, 216, 0.4);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            z-index: 1001;
-            color: white;
-            font-weight: 700;
-        }
-        
-        .language-toggle-btn-float:hover {
-            transform: scale(1.1) translateY(-4px);
-            box-shadow: var(--shadow-xl), 0 0 32px rgba(90, 103, 216, 0.5);
-        }
-        
-        .language-toggle-btn-float:active {
-            transform: scale(0.95);
-        }
-        
-        .language-menu-backdrop {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0);
-            z-index: 999;
-            transition: background 0.3s ease;
-        }
-        
-        .language-menu-backdrop.active {
-            display: block;
-            background: rgba(0, 0, 0, 0.4);
-        }
-        
-        .language-dropdown-menu {
-            position: absolute;
-            bottom: 80px;
+        /* Version RTL (arabe) : barre de progression de droite vers gauche */
+        html[dir="rtl"] .progress-steps::after {
+            left: auto;
             right: 0;
-            background: white;
-            border-radius: 16px;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--border-light);
-            padding: 12px;
-            min-width: 200px;
-            display: none;
-            flex-direction: column;
-            gap: 8px;
-            animation: scaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1002;
+            width: 0%;
+            background: linear-gradient(270deg, var(--primary) 0%, var(--accent) 100%);
         }
         
-        html[dir="rtl"] .language-dropdown-menu {
-            right: auto;
-            left: 0;
-        }
+        .progress-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; background: transparent; z-index: 3; }
+        .progress-step-circle { width: 44px; height: 44px; background: white; border: 2.5px solid #cbd5e0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #94a3b8; transition: all 0.3s ease; box-shadow: var(--shadow-sm); background: white; }
+        .progress-step.active .progress-step-circle { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); border-color: transparent; color: white; transform: scale(1.08); box-shadow: var(--shadow-md); }
+        .progress-step.completed .progress-step-circle { background: var(--success); border-color: var(--success); color: white; }
+        .progress-step-label { font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.3s ease; text-align: center; }
+        .progress-step.active .progress-step-label { color: var(--primary); font-weight: 800; }
+        .progress-step.completed .progress-step-label { color: var(--success); }
         
-        .language-dropdown-menu.active {
-            display: flex;
-        }
+        .card { background: white; border-radius: 24px; box-shadow: var(--shadow-xl); padding: 48px; max-width: 640px; width: 100%; animation: slideIn 0.5s ease; border: 1px solid rgba(255,255,255,0.3); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes ticketPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+        .step { display: none; }
+        .step.active { display: block; animation: slideIn 0.4s ease; }
+        h1 { font-size: 32px; font-weight: 800; text-align: center; margin-bottom: 12px; letter-spacing: -0.5px; color: #1e293b; }
+        .subtitle { text-align: center; color: #64748b; margin-bottom: 32px; font-size: 14px; font-weight: 500; }
+        .qr-container { text-align: center; margin-bottom: 32px; padding: 32px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 20px; }
+        .qr-container p { margin-bottom: 20px; font-size: 14px; color: #475569; font-weight: 500; }
+        #qrcode { display: inline-block; padding: 12px; background: white; border-radius: 16px; box-shadow: var(--shadow-md); }
+        .language-selector { position: fixed; bottom: 24px; right: 24px; z-index: 1000; }
+        html[dir="rtl"] .language-selector { right: auto; left: 24px; }
+        .language-toggle-btn-float { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); border: none; cursor: pointer; font-size: 26px; color: white; box-shadow: var(--shadow-lg); transition: all 0.3s ease; }
+        .language-toggle-btn-float:hover { transform: scale(1.08); }
+        .language-menu-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0); z-index: 999; transition: background 0.3s; }
+        .language-menu-backdrop.active { display: block; background: rgba(0,0,0,0.4); }
+        .language-dropdown-menu { position: absolute; bottom: 70px; right: 0; background: white; border-radius: 20px; box-shadow: var(--shadow-lg); padding: 12px; min-width: 200px; display: none; flex-direction: column; gap: 8px; z-index: 1002; animation: scaleIn 0.2s ease; }
+        html[dir="rtl"] .language-dropdown-menu { right: auto; left: 0; }
+        .language-dropdown-menu.active { display: flex; }
+        .language-menu-item { padding: 12px 16px; border-radius: 12px; cursor: pointer; background: #f8fafc; font-weight: 600; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .language-menu-item:hover { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: white; }
+        .language-menu-item.active { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: white; }
+        .language-toggle { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 32px; }
+        .lang-toggle-btn { padding: 12px 16px; border: 1.5px solid #e2e8f0; background: white; border-radius: 14px; cursor: pointer; font-weight: 700; transition: all 0.3s; font-size: 14px; }
+        .lang-toggle-btn:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .lang-toggle-btn.active { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: white; border-color: transparent; }
         
-        .language-menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            background: var(--bg-light);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            color: var(--text-dark);
-            font-weight: 600;
-            font-size: 14px;
-            position: relative;
-            overflow: hidden;
-        }
+        /* Formulaire - inputs avec plus de padding */
+        .form-group { margin-bottom: 24px; animation: slideInRight 0.4s ease; }
+        label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; }
+        input, select { width: 100%; padding: 16px 18px; border: 1.5px solid #e2e8f0; border-radius: 14px; font-size: 15px; background: white; transition: all 0.3s; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(90,103,216,0.1); }
         
-        .language-menu-item::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 0;
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
-            opacity: 0.1;
-            transition: width 0.3s ease;
-        }
+        /* Ajustement pour RTL (arabe) */
+        html[dir="rtl"] input, html[dir="rtl"] select, html[dir="rtl"] .service-btn, html[dir="rtl"] .btn { text-align: right; }
+        html[dir="rtl"] .service-btn { text-align: right; }
+        html[dir="rtl"] .ticket-info p { direction: rtl; }
+        html[dir="rtl"] .ticket-info span { text-align: left; }
         
-        .language-menu-item:hover {
-            border-color: var(--primary);
-            background: white;
-            box-shadow: var(--shadow-sm);
-            transform: translateX(-4px);
-        }
-        
-        html[dir="rtl"] .language-menu-item:hover {
-            transform: translateX(4px);
-        }
-        
-        .language-menu-item.active {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            color: white;
-            border-color: transparent;
-            box-shadow: 0 4px 12px rgba(90, 103, 216, 0.3);
-        }
-        
-        .language-menu-item.active::before {
-            display: none;
-        }
-        
-        .language-menu-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--text-lighter);
-            transition: all 0.3s ease;
-            margin-left: auto;
-        }
-        
-        html[dir="rtl"] .language-menu-indicator {
-            margin-left: 0;
-            margin-right: auto;
-        }
-        
-        .language-menu-item.active .language-menu-indicator {
-            background: white;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
-            transform: scale(1.2);
-        }
-        
-        .language-menu-label {
-            flex: 1;
-        }
-        
-        .language-menu-code {
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            opacity: 0.7;
-            min-width: 24px;
-            text-align: right;
-        }
-        
-        html[dir="rtl"] .language-menu-code {
-            text-align: left;
-        }
-        
-        .language-menu-item.active .language-menu-code {
-            opacity: 1;
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* LANGUAGE TOGGLE - Étape 1 */
-        /* ═════════════════════════════════════════════════════════════ */
-        .language-toggle-wrapper {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 36px;
-        }
-        
-        .language-toggle {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            width: 100%;
-            max-width: 100%;
-        }
-        
-        .lang-toggle-btn {
-            padding: 14px 16px;
-            border: 1px solid var(--border-light);
-            background: white;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-dark);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .lang-toggle-btn::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .lang-toggle-btn:hover {
-            border-color: var(--primary);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
-        }
-        
-        .lang-toggle-btn.active {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            color: white;
-            border-color: transparent;
-            box-shadow: var(--shadow-md), 0 0 24px rgba(90, 103, 216, 0.3);
-        }
-        
-        .lang-toggle-btn span {
-            position: relative;
-            z-index: 1;
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* FORM STYLING */
-        /* ═════════════════════════════════════════════════════════════ */
-        .form-group {
-            margin-bottom: 28px;
-            animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .form-group:nth-child(2) { animation-delay: 0.1s; }
-        .form-group:nth-child(3) { animation-delay: 0.2s; }
-        .form-group:nth-child(4) { animation-delay: 0.3s; }
-        
-        label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 700;
-            color: var(--text-dark);
-            font-size: 13px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            opacity: 0.95;
-        }
-        
-        input[type="text"],
-        input[type="tel"],
-        select {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1px solid var(--border-light);
-            border-radius: 12px;
-            font-size: 15px;
-            background: white;
-            color: var(--text-dark);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-family: inherit;
-            font-weight: 500;
-        }
-        
-        input[type="text"]::placeholder,
-        input[type="tel"]::placeholder {
-            color: var(--text-lighter);
-            font-weight: 400;
-        }
-        
-        input[type="text"]:focus,
-        input[type="tel"]:focus,
-        select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.1), var(--shadow-md);
-            background: white;
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* SERVICE BUTTONS */
-        /* ═════════════════════════════════════════════════════════════ */
-        .service-buttons {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 14px;
-            margin: 32px 0;
-        }
-        
-        .service-btn {
-            padding: 20px 22px;
-            border: 1px solid var(--border-light);
-            background: white;
-            border-radius: 14px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            color: var(--text-dark);
-            text-align: left;
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .service-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 0;
-            background: linear-gradient(180deg, var(--primary) 0%, var(--accent) 100%);
-            transition: height 0.3s ease;
-        }
-        
-        .service-btn:hover {
-            border-color: var(--primary);
-            background: var(--bg-light);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
-        }
-        
-        .service-btn:hover::before {
-            height: 100%;
-        }
-        
-        .service-btn.active {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            color: white;
-            border-color: transparent;
-            box-shadow: var(--shadow-lg), 0 0 24px rgba(90, 103, 216, 0.3);
-        }
-        
-        .service-btn.active::before {
-            display: none;
-        }
-        
-        .service-btn small {
-            display: block;
-            font-size: 13px;
-            font-weight: 400;
-            margin-top: 6px;
-            opacity: 0.8;
-        }
-        
-        .service-btn.active small {
-            opacity: 0.9;
-        }
-        
-        .no-services {
-            padding: 40px;
-            text-align: center;
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            border-radius: 14px;
-            color: #742a2a;
-            border: 1px solid #fca5a5;
-            font-weight: 600;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .db-error {
-            padding: 16px;
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border: 1px solid #fcd34d;
-            border-radius: 12px;
-            color: #78350f;
-            margin-bottom: 24px;
-            font-size: 14px;
-            font-weight: 600;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* BUTTONS */
-        /* ═════════════════════════════════════════════════════════════ */
-        .button-group {
-            display: flex;
-            gap: 14px;
-            margin-top: 40px;
-            justify-content: space-between;
-        }
-        
-        .btn {
-            flex: 1;
-            padding: 16px 24px;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            letter-spacing: 0.5px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow-md);
-            text-transform: uppercase;
-            min-height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            color: white;
-        }
-        
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-lg), 0 0 28px rgba(90, 103, 216, 0.35);
-        }
-        
-        .btn-primary:active:not(:disabled) {
-            transform: translateY(-1px);
-        }
-        
-        .btn-primary:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .btn-secondary {
-            background: white;
-            color: var(--text-dark);
-            border: 1.5px solid var(--border-light);
-        }
-        
-        .btn-secondary:hover {
-            background: var(--bg-light);
-            border-color: var(--primary);
-            color: var(--primary);
-            box-shadow: var(--shadow-md), 0 0 20px rgba(90, 103, 216, 0.15);
-        }
-        
-        .btn-secondary:active {
-            transform: translateY(-1px);
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* TICKET PREVIEW - OPTIMISÉ POUR L'IMPRESSION */
-        /* ═════════════════════════════════════════════════════════════ */
-        .ticket-preview {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
-            padding: 40px;
-            border-radius: 16px;
-            text-align: center;
-            margin: 36px 0;
-            border: 1px solid var(--border-light);
-            box-shadow: var(--shadow-md);
-            page-break-inside: avoid;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-        
-        .ticket-preview h2 {
-            font-size: 28px;
-            margin: 0;
-            color: var(--text-dark);
-            font-weight: 800;
-        }
-        
-        .ticket-number {
-            font-size: 56px;
-            font-weight: 900;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin: 20px 0;
-            letter-spacing: 4px;
-            font-family: 'Courier New', monospace;
-            animation: ticketPulse 2s ease-in-out infinite;
-            min-height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            page-break-inside: avoid;
-        }
-        
-        .ticket-info {
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            margin: 0;
-            text-align: left;
-            border: 1px solid var(--border-light);
-            box-shadow: var(--shadow-sm);
-            page-break-inside: avoid;
-        }
-        
-        .ticket-info p {
-            display: flex;
-            justify-content: space-between;
-            padding: 14px 0;
-            border-bottom: 1px solid var(--border-light);
-            font-size: 14px;
-        }
-        
-        .ticket-info p:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-        
-        .ticket-info strong {
-            color: var(--text-dark);
-            font-weight: 700;
-        }
-        
-        .ticket-info span {
-            color: var(--text-light);
-            font-weight: 500;
-            text-align: right;
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* ERROR MESSAGE */
-        /* ═════════════════════════════════════════════════════════════ */
-        .error-message {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            color: #742a2a;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            display: none;
-            border: 1px solid #fca5a5;
-            font-weight: 600;
-            font-size: 14px;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* ✅ MEDIA PRINT - IMPRESSION OPTIMISÉE */
-        /* ═════════════════════════════════════════════════════════════ */
-        @media print {
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
-            
-            html, body {
-                width: 100%;
-                height: 100%;
-                margin: 0;
-                padding: 0;
-            }
-            
-            body {
-                background: white !important;
-                font-size: 16px;
-            }
-            
-            .container-main {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                padding: 0;
-                margin: 0;
-            }
-            
-            .card {
-                box-shadow: none;
-                padding: 40px;
-                margin: 0;
-                max-width: 100%;
-                border: none;
-                background: white;
-                border-radius: 0;
-                animation: none;
-            }
-            
-            /* Masquer les éléments inutiles à l'impression */
-            .language-selector,
-            .language-menu-backdrop,
-            .button-group,
-            .progress-container,
-            .qr-container,
-            .language-toggle-wrapper,
-            .error-message,
-            #step1, #step2, #step3 {
-                display: none !important;
-            }
-            
-            /* Afficher uniquement l'étape 4 (ticket) */
-            #step4 {
-                display: block !important;
-            }
-            
-            #step4 h1 {
-                font-size: 24px;
-                margin-bottom: 20px;
-                text-align: center;
-            }
-            
-            .subtitle {
-                display: none;
-            }
-            
-            /* Optimiser le ticket pour l'impression */
-            .ticket-preview {
-                background: white !important;
-                padding: 40px;
-                border-radius: 0;
-                box-shadow: none !important;
-                margin: 0;
-                border: 3px dashed #333;
-                page-break-inside: avoid;
-                display: flex;
-                flex-direction: column;
-                gap: 20px;
-                min-height: 500px;
-                justify-content: center;
-            }
-            
-            .ticket-preview h2 {
-                font-size: 20px;
-                margin: 0;
-                text-align: center;
-            }
-            
-            .ticket-number {
-                font-size: 72px;
-                font-weight: 900;
-                color: #000 !important;
-                -webkit-text-fill-color: unset;
-                background: none !important;
-                background-clip: unset !important;
-                -webkit-background-clip: unset !important;
-                margin: 30px 0;
-                letter-spacing: 6px;
-                font-family: 'Courier New', monospace;
-                animation: none !important;
-                min-height: 90px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border: 2px solid #000;
-                padding: 20px;
-                border-radius: 8px;
-                page-break-inside: avoid;
-            }
-            
-            .ticket-info {
-                background: white !important;
-                padding: 20px;
-                border: 1px solid #333;
-                border-radius: 4px;
-                box-shadow: none !important;
-                page-break-inside: avoid;
-            }
-            
-            .ticket-info p {
-                font-size: 13px;
-                padding: 10px 0;
-                border-color: #ddd;
-                display: flex;
-                justify-content: space-between;
-            }
-            
-            .ticket-info strong {
-                color: #000;
-                font-weight: 700;
-            }
-            
-            .ticket-info span {
-                color: #000;
-                font-weight: 500;
-                text-align: right;
-            }
-            
-            /* Styles de couleur pour impression en noir et blanc */
-            @page {
-                size: A4;
-                margin: 20mm;
-            }
-        }
-        
-        /* ═════════════════════════════════════════════════════════════ */
-        /* RESPONSIVE DESIGN */
-        /* ═════════════════════════════════════════════════════════════ */
-        @media (max-width: 768px) {
-            .card {
-                padding: 36px 24px;
-                border-radius: 16px;
-            }
-            
-            h1 {
-                font-size: 28px;
-            }
-            
-            .subtitle {
-                font-size: 14px;
-            }
-            
-            .language-toggle {
-                grid-template-columns: 1fr 1fr;
-            }
-            
-            .button-group {
-                flex-direction: row;
-                gap: 12px;
-            }
-            
-            .btn {
-                flex: 1;
-                padding: 14px 16px;
-                font-size: 14px;
-            }
-            
-            .progress-step {
-                gap: 6px;
-            }
-            
-            .progress-step-circle {
-                width: 36px;
-                height: 36px;
-                font-size: 13px;
-            }
-            
-            .progress-step-label {
-                font-size: 11px;
-            }
-            
-            .language-selector {
-                bottom: 20px;
-                right: 20px;
-            }
-            
-            html[dir="rtl"] .language-selector {
-                right: auto;
-                left: 20px;
-            }
-            
-            .language-toggle-btn-float {
-                width: 52px;
-                height: 52px;
-                font-size: 26px;
-            }
-            
-            .language-dropdown-menu {
-                min-width: 180px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .card {
-                padding: 28px 20px;
-            }
-            
-            h1 {
-                font-size: 24px;
-            }
-            
-            .progress-container {
-                margin-bottom: 32px;
-            }
-            
-            .progress-step-circle {
-                width: 32px;
-                height: 32px;
-                font-size: 12px;
-            }
-            
-            .language-toggle {
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
-            
-            .lang-toggle-btn {
-                padding: 12px 14px;
-                font-size: 13px;
-            }
-            
-            .qr-container {
-                padding: 24px;
-            }
-            
-            .service-btn {
-                padding: 18px 16px;
-                font-size: 14px;
-            }
-            
-            .button-group {
-                gap: 10px;
-                margin-top: 32px;
-            }
-            
-            .btn {
-                padding: 13px 14px;
-                font-size: 13px;
-                min-height: 44px;
-            }
-            
-            .form-group {
-                margin-bottom: 20px;
-            }
-            
-            .ticket-preview {
-                padding: 28px 20px;
-            }
-            
-            .ticket-number {
-                font-size: 42px;
-                letter-spacing: 2px;
-            }
-            
-            .ticket-info {
-                padding: 16px;
-            }
-            
-            .language-selector {
-                bottom: 16px;
-                right: 16px;
-            }
-            
-            html[dir="rtl"] .language-selector {
-                right: auto;
-                left: 16px;
-            }
-            
-            .language-toggle-btn-float {
-                width: 48px;
-                height: 48px;
-                font-size: 22px;
-            }
-            
-            .language-dropdown-menu {
-                min-width: 160px;
-                bottom: 70px;
-            }
-            
-            .language-menu-item {
-                padding: 12px 14px;
-                font-size: 13px;
-            }
-        }
+        .service-buttons { display: grid; gap: 12px; margin: 28px 0; }
+        .service-btn { padding: 18px 20px; border: 1.5px solid #e2e8f0; background: white; border-radius: 16px; cursor: pointer; font-weight: 600; text-align: left; transition: all 0.3s; box-shadow: var(--shadow-sm); }
+        .service-btn:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .service-btn.active { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: white; border-color: transparent; }
+        .service-btn small { display: block; font-size: 12px; font-weight: 400; margin-top: 6px; opacity: 0.8; }
+        .no-services { padding: 40px; text-align: center; background: #fee2e2; border-radius: 16px; color: #991b1b; font-weight: 600; }
+        .db-error { padding: 14px; background: #fef3c7; border-radius: 14px; color: #92400e; margin-bottom: 24px; font-weight: 600; font-size: 13px; }
+        .button-group { display: flex; gap: 12px; margin-top: 36px; }
+        .btn { flex: 1; padding: 14px 20px; border-radius: 14px; font-weight: 700; cursor: pointer; text-transform: uppercase; text-align: center; transition: all 0.3s; box-shadow: var(--shadow-sm); font-size: 13px; letter-spacing: 0.5px; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: white; border: none; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-secondary { background: white; color: #334155; border: 1.5px solid #e2e8f0; }
+        .btn-secondary:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
+        .ticket-preview { background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%); padding: 32px; border-radius: 20px; text-align: center; margin: 32px 0; border: 1px solid #e2e8f0; }
+        .ticket-preview h2 { font-size: 24px; margin-bottom: 16px; font-weight: 800; color: #1e293b; }
+        .ticket-number { font-size: 52px; font-weight: 900; background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 16px 0; font-family: 'Courier New', monospace; letter-spacing: 2px; animation: ticketPulse 2s infinite; }
+        .ticket-info { background: white; padding: 20px; border-radius: 16px; text-align: left; border: 1px solid #e2e8f0; }
+        .ticket-info p { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        .ticket-info p:last-child { border-bottom: none; }
+        .error-message { background: #fee2e2; color: #991b1b; padding: 14px; border-radius: 14px; margin-bottom: 24px; display: none; font-weight: 600; font-size: 13px; }
+        @media print { .language-selector, .progress-container, .button-group, .qr-container, .language-toggle, #step1, #step2, #step3 { display: none !important; } #step4 { display: block !important; } .ticket-number { color: black !important; -webkit-text-fill-color: black; background: none; border: 2px solid #000; padding: 16px; border-radius: 12px; } }
+        @media (max-width: 640px) { .card { padding: 28px 20px; } h1 { font-size: 26px; } .progress-step-circle { width: 38px; height: 38px; font-size: 14px; } .progress-step-label { font-size: 10px; } .progress-steps::before, .progress-steps::after { top: 19px; } input, select { padding: 14px 16px; } }
     </style>
 </head>
 <body>
     <div class="container-main">
         <div class="card">
-            <!-- STEPPER - Indicateur de Progression -->
+            <!-- STEPPER avec barre de progression -->
             <div class="progress-container">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill" style="width: 25%;"></div>
-                </div>
-                <div class="progress-steps">
+                <div class="progress-steps" id="progressSteps">
                     <div class="progress-step active" id="progressStep1">
                         <div class="progress-step-circle">1</div>
-                        <div class="progress-step-label">Accueil</div>
+                        <div class="progress-step-label" id="stepLabel1"><?php echo $t['step1']; ?></div>
                     </div>
                     <div class="progress-step" id="progressStep2">
                         <div class="progress-step-circle">2</div>
-                        <div class="progress-step-label">Service</div>
+                        <div class="progress-step-label" id="stepLabel2"><?php echo $t['step2']; ?></div>
                     </div>
                     <div class="progress-step" id="progressStep3">
                         <div class="progress-step-circle">3</div>
-                        <div class="progress-step-label">Infos</div>
+                        <div class="progress-step-label" id="stepLabel3"><?php echo $t['step3']; ?></div>
                     </div>
                     <div class="progress-step" id="progressStep4">
                         <div class="progress-step-circle">✓</div>
-                        <div class="progress-step-label">Ticket</div>
+                        <div class="progress-step-label" id="stepLabel4"><?php echo $t['step4']; ?></div>
                     </div>
                 </div>
             </div>
             
             <!-- ÉTAPE 1 : Accueil -->
             <div class="step active" id="step1">
-                <h1><?php echo $t['welcome']; ?></h1>
-                <p class="subtitle"><?php echo $t['select_language']; ?></p>
-                
+                <h1 id="welcomeText"><?php echo $t['welcome']; ?></h1>
+                <p class="subtitle" id="selectLangText"><?php echo $t['select_language']; ?></p>
                 <div class="qr-container">
-                    <p><?php echo $t['scan_qr']; ?></p>
+                    <p id="qrText"><?php echo $t['scan_qr']; ?></p>
                     <div id="qrcode"></div>
                 </div>
-                
-                <!-- Language Toggle -->
-                <div class="language-toggle-wrapper">
-                    <div class="language-toggle">
-                        <button class="lang-toggle-btn active" onclick="selectLanguage('ar')">
-                            <span>🇸🇦 <?php echo $t['arabic']; ?></span>
-                        </button>
-                        <button class="lang-toggle-btn active" onclick="selectLanguage('fr')">
-                            <span>🇫🇷 <?php echo $t['french']; ?></span>
-                        </button>
-                        <button class="lang-toggle-btn active" onclick="selectLanguage('en')">
-                            <span>🇬🇧 <?php echo $t['english']; ?></span>
-                        </button>
-                        <button class="lang-toggle-btn active" onclick="selectLanguage('it')">
-                            <span>🇮🇹 <?php echo $t['italian']; ?></span>
-                        </button>
-                    </div>
+                <div class="language-toggle">
+                    <button class="lang-toggle-btn <?php echo $lang === 'ar' ? 'active' : ''; ?>" data-lang="ar">🇸🇦 <?php echo $t['arabic']; ?></button>
+                    <button class="lang-toggle-btn <?php echo $lang === 'fr' ? 'active' : ''; ?>" data-lang="fr">🇫🇷 <?php echo $t['french']; ?></button>
+                    <button class="lang-toggle-btn <?php echo $lang === 'en' ? 'active' : ''; ?>" data-lang="en">🇬🇧 <?php echo $t['english']; ?></button>
+                    <button class="lang-toggle-btn <?php echo $lang === 'it' ? 'active' : ''; ?>" data-lang="it">🇮🇹 <?php echo $t['italian']; ?></button>
                 </div>
-                
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="goToStep(2)">
-                        <?php echo $t['next']; ?> →
-                    </button>
+                    <button class="btn btn-primary" id="nextStep1Btn"><?php echo $t['next']; ?> →</button>
                 </div>
             </div>
             
             <!-- ÉTAPE 2 : Sélection du Domaine -->
             <div class="step" id="step2">
-                <h1><?php echo $t['select_service']; ?></h1>
-                <p class="subtitle"><?php echo $t['domain']; ?></p>
-                
+                <h1 id="serviceTitle"><?php echo $t['select_service']; ?></h1>
+                <p class="subtitle" id="domainSubtitle"><?php echo $t['domain']; ?></p>
                 <?php if ($db_error): ?>
-                    <div class="db-error">
-                        ⚠️ <?php echo htmlspecialchars($db_error); ?>
-                    </div>
+                    <div class="db-error">⚠️ <?php echo htmlspecialchars($db_error); ?></div>
                 <?php endif; ?>
-                
                 <div class="service-buttons" id="serviceContainer">
                     <?php if (count($domaines) > 0): ?>
                         <?php foreach ($domaines as $domaine): ?>
-                            <button class="service-btn" 
-                                    onclick="selectService('<?php echo htmlspecialchars($domaine['nom']); ?>', '<?php echo htmlspecialchars($domaine['code']); ?>', this)">
+                            <button class="service-btn" data-code="<?php echo htmlspecialchars($domaine['code']); ?>" data-name="<?php echo htmlspecialchars($domaine['nom']); ?>">
                                 📌 <?php echo htmlspecialchars($domaine['nom']); ?>
                                 <?php if (!empty($domaine['description'])): ?>
                                     <small><?php echo htmlspecialchars($domaine['description']); ?></small>
@@ -1522,151 +517,157 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </button>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <div class="no-services">
-                            <p>❌ Aucun service disponible</p>
-                            <p style="font-size: 12px; margin-top: 12px;">Veuillez contacter l'administrateur</p>
-                        </div>
+                        <div class="no-services">❌ Aucun service disponible</div>
                     <?php endif; ?>
                 </div>
-                
                 <div class="button-group">
-                    <button class="btn btn-secondary" onclick="goToStep(1)">
-                        ← <?php echo $t['back']; ?>
-                    </button>
-                    <button class="btn btn-primary" onclick="goToStep(3)" <?php echo count($domaines) === 0 ? 'disabled' : ''; ?>>
-                        <?php echo $t['next']; ?> →
-                    </button>
+                    <button class="btn btn-secondary" id="backStep2Btn">← <?php echo $t['back']; ?></button>
+                    <button class="btn btn-primary" id="nextStep2Btn"><?php echo $t['next']; ?> →</button>
                 </div>
             </div>
             
             <!-- ÉTAPE 3 : Formulaire -->
             <div class="step" id="step3">
-                <h1><?php echo $t['form_info']; ?></h1>
-                <p class="subtitle"><?php echo $t['ticket_confirmed']; ?></p>
+                <h1 id="formTitle"><?php echo $t['form_info']; ?></h1>
+                <p class="subtitle" id="formSubtitle"><?php echo $t['ticket_confirmed']; ?></p>
                 <div class="error-message" id="errorMessage"></div>
-                
                 <div class="form-group">
-                    <label for="fullName"><?php echo $t['full_name']; ?></label>
-                    <input type="text" id="fullName" placeholder="Jean Dupont" autocomplete="name">
+                    <label id="nameLabel"><?php echo $t['full_name']; ?></label>
+                    <input type="text" id="fullName" placeholder="Jean Dupont"  style="padding: 16px 20px;">
                 </div>
-                
                 <div class="form-group">
-                    <label for="phone"><?php echo $t['phone']; ?></label>
-                    <input type="tel" id="phone" placeholder="+33 6 12 34 56 78" autocomplete="tel">
+                    <label id="phoneLabel"><?php echo $t['phone']; ?></label>
+                    <input type="tel" id="phone" placeholder="+212 6 12 34 56 78"  style="padding: 16px 20px;">
                 </div>
-                
                 <div class="form-group">
-                    <label for="status"><?php echo $t['status']; ?></label>
-                    <select id="status">
+                    <label id="statusLabel"><?php echo $t['status']; ?></label>
+                    <select id="status"  style="padding: 16px 20px;">
                         <option value="">-- <?php echo $t['status']; ?> --</option>
                         <option value="standard"><?php echo $t['standard']; ?></option>
                         <option value="pregnant"><?php echo $t['pregnant']; ?></option>
                         <option value="disability"><?php echo $t['disability']; ?></option>
                     </select>
                 </div>
-                
                 <div class="button-group">
-                    <button class="btn btn-secondary" onclick="goToStep(2)">← <?php echo $t['back']; ?></button>
-                    <button class="btn btn-primary" onclick="submitForm()">📋 <?php echo $t['print_ticket']; ?></button>
+                    <button class="btn btn-secondary" id="backStep3Btn">← <?php echo $t['back']; ?></button>
+                    <button class="btn btn-primary" id="submitBtn">📋 <?php echo $t['print_ticket']; ?></button>
                 </div>
             </div>
             
-            <!-- ÉTAPE 4 : Ticket Confirmation -->
+            <!-- ÉTAPE 4 : Ticket -->
             <div class="step" id="step4">
-                <h1><?php echo $t['ticket_confirmed']; ?></h1>
-                <p class="subtitle"><?php echo $t['ticket_number']; ?></p>
-                
+                <h1 id="ticketConfirmTitle"><?php echo $t['ticket_confirmed']; ?></h1>
+                <p class="subtitle" id="ticketNumberLabel"><?php echo $t['ticket_number']; ?></p>
                 <div class="ticket-preview">
-                    <h2><?php echo $t['ticket_number']; ?></h2>
+                    <h2 id="ticketNumberTitle"><?php echo $t['ticket_number']; ?></h2>
                     <div class="ticket-number" id="ticketNumber">----</div>
-                    
                     <div class="ticket-info">
-                        <p>
-                            <strong><?php echo $t['full_name']; ?>:</strong>
-                            <span id="ticketName">-</span>
-                        </p>
-                        <p>
-                            <strong><?php echo $t['phone']; ?>:</strong>
-                            <span id="ticketPhone">-</span>
-                        </p>
-                        <p>
-                            <strong><?php echo $t['status']; ?>:</strong>
-                            <span id="ticketStatus">-</span>
-                        </p>
-                        <p>
-                            <strong><?php echo $t['domain']; ?>:</strong>
-                            <span id="ticketService">-</span>
-                        </p>
-                        <p>
-                            <strong>Date/Heure:</strong>
-                            <span id="ticketDate" style="direction: ltr;"></span>
-                        </p>
+                        <p><strong id="fullNameLabelTicket"><?php echo $t['full_name']; ?>:</strong> <span id="ticketName">-</span></p>
+                        <p><strong id="phoneLabelTicket"><?php echo $t['phone']; ?>:</strong> <span id="ticketPhone">-</span></p>
+                        <p><strong id="statusLabelTicket"><?php echo $t['status']; ?>:</strong> <span id="ticketStatus">-</span></p>
+                        <p><strong id="domainLabelTicket"><?php echo $t['domain']; ?>:</strong> <span id="ticketService">-</span></p>
+                        <p><strong id="dateLabelTicket"><?php echo $t['date_time']; ?>:</strong> <span id="ticketDate"></span></p>
                     </div>
                 </div>
-                
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="printTicket()">🖨️ <?php echo $t['print_ticket']; ?></button>
-                    <button class="btn btn-secondary" onclick="resetForm()">➕ <?php echo $t['next']; ?></button>
+                    <button class="btn btn-secondary" id="resetBtn">➕ <?php echo $t['new_ticket']; ?></button>
+                    <button class="btn btn-primary" id="printBtn">🖨️ <?php echo $t['print_ticket']; ?></button>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- SÉLECTEUR DE LANGUE - Menu Escamotable Premium -->
-    <div class="language-menu-backdrop" id="languageMenuBackdrop" onclick="closeLanguageMenu()"></div>
-    
-    <div class="language-selector" id="languageSelector">
-        <button class="language-toggle-btn-float" id="languageToggleBtn" onclick="toggleLanguageMenu()">
-            🌐
-        </button>
-        
+    <!-- Menu langue flottant -->
+    <div class="language-menu-backdrop" id="languageMenuBackdrop"></div>
+    <div class="language-selector">
+        <button class="language-toggle-btn-float" id="floatLangBtn">🌐</button>
         <div class="language-dropdown-menu" id="languageDropdownMenu">
-            <button class="language-menu-item active" onclick="selectLanguageFromMenu('ar')">
-                <div class="language-menu-label">العربية</div>
-                <div class="language-menu-code">AR</div>
-                <div class="language-menu-indicator"></div>
-            </button>
-            
-            <button class="language-menu-item" onclick="selectLanguageFromMenu('fr')">
-                <div class="language-menu-label">Français</div>
-                <div class="language-menu-code">FR</div>
-                <div class="language-menu-indicator"></div>
-            </button>
-            
-            <button class="language-menu-item" onclick="selectLanguageFromMenu('en')">
-                <div class="language-menu-label">English</div>
-                <div class="language-menu-code">EN</div>
-                <div class="language-menu-indicator"></div>
-            </button>
-            
-            <button class="language-menu-item" onclick="selectLanguageFromMenu('it')">
-                <div class="language-menu-label">Italiano</div>
-                <div class="language-menu-code">IT</div>
-                <div class="language-menu-indicator"></div>
-            </button>
+            <button class="language-menu-item <?php echo $lang === 'ar' ? 'active' : ''; ?>" data-lang="ar">العربية</button>
+            <button class="language-menu-item <?php echo $lang === 'fr' ? 'active' : ''; ?>" data-lang="fr">Français</button>
+            <button class="language-menu-item <?php echo $lang === 'en' ? 'active' : ''; ?>" data-lang="en">English</button>
+            <button class="language-menu-item <?php echo $lang === 'it' ? 'active' : ''; ?>" data-lang="it">Italiano</button>
         </div>
     </div>
     
     <script>
+        // Traductions complètes pour JavaScript
+        const translationsJS = {
+            fr: { step1:"ACCUEIL", step2:"SERVICE", step3:"INFOS", step4:"TICKET", welcome:"Bienvenue à Smart Queue Management", select_language:"Sélectionnez votre langue", scan_qr:"Scannez ce code QR pour continuer sur mobile", select_service:"Sélectionnez un service", domain:"Domaine", next:"Suivant", back:"Retour", full_name:"Nom Complet", phone:"Téléphone", status:"État", standard:"Standard", pregnant:"Femme enceinte", disability:"PMR/Handicap", print_ticket:"Imprimer Ticket", ticket_number:"Numéro de Ticket", form_info:"Veuillez saisir vos informations", ticket_confirmed:"Ticket généré avec succès", new_ticket:"Nouveau ticket", select_service_first:"Veuillez sélectionner un service", processing:"Traitement...", printing:"Impression...", error_empty:"Tous les champs sont obligatoires", date_time:"Date/Heure" },
+            ar: { step1:"الرئيسية", step2:"الخدمة", step3:"المعلومات", step4:"التذكرة", welcome:"مرحبا بك في نظام إدارة الطوابير الذكية", select_language:"اختر لغتك", scan_qr:"امسح رمز QR هذا للمتابعة على الهاتف المحمول", select_service:"اختر خدمة", domain:"المجال", next:"التالي", back:"العودة", full_name:"الاسم الكامل", phone:"الهاتف", status:"الحالة", standard:"عادي", pregnant:"حامل", disability:"الإعاقة", print_ticket:"طباعة التذكرة", ticket_number:"رقم التذكرة", form_info:"يرجى إدخال معلوماتك", ticket_confirmed:"تم إنشاء التذكرة بنجاح", new_ticket:"تذكرة جديدة", select_service_first:"الرجاء اختيار خدمة", processing:"جاري المعالجة...", printing:"جاري الطباعة...", error_empty:"جميع الحقول مطلوبة", date_time:"التاريخ/الوقت" },
+            en: { step1:"HOME", step2:"SERVICE", step3:"INFO", step4:"TICKET", welcome:"Welcome to Smart Queue Management", select_language:"Select your language", scan_qr:"Scan this QR code to continue on mobile", select_service:"Select a service", domain:"Domain", next:"Next", back:"Back", full_name:"Full name", phone:"Phone", status:"Status", standard:"Standard", pregnant:"Pregnant", disability:"Disability", print_ticket:"Print ticket", ticket_number:"Ticket number", form_info:"Please enter your information", ticket_confirmed:"Ticket generated successfully", new_ticket:"New ticket", select_service_first:"Please select a service", processing:"Processing...", printing:"Printing...", error_empty:"All fields are required", date_time:"Date/Time" },
+            it: { step1:"HOME", step2:"SERVIZIO", step3:"INFO", step4:"BIGLIETTO", welcome:"Benvenuto in Smart Queue Management", select_language:"Seleziona la tua lingua", scan_qr:"Scansiona questo codice QR per continuare sul mobile", select_service:"Seleziona un servizio", domain:"Dominio", next:"Avanti", back:"Indietro", full_name:"Nome completo", phone:"Telefono", status:"Stato", standard:"Standard", pregnant:"In attesa", disability:"Disabilità", print_ticket:"Stampa biglietto", ticket_number:"Numero del biglietto", form_info:"Inserisci le tue informazioni", ticket_confirmed:"Biglietto generato con successo", new_ticket:"Nuovo biglietto", select_service_first:"Seleziona un servizio", processing:"Elaborazione...", printing:"Stampa in corso...", error_empty:"Tutti i campi sono obbligatori", date_time:"Data/Ora" }
+        };
+        
         let currentStep = 1;
         let selectedService = '';
         let selectedServiceCode = '';
         let currentLanguage = '<?php echo $lang; ?>';
+        let isRTL = <?php echo $isRTL ? 'true' : 'false'; ?>;
         
-        console.log('🚀 Domaines au chargement:', <?php echo json_encode($domaines); ?>);
+        // Mise à jour de la barre de progression
+        function updateProgress(step) {
+            const percent = ((step - 1) / 3) * 100;
+            const progressSteps = document.getElementById('progressSteps');
+            
+            if (isRTL) {
+                // Pour RTL (arabe) : la barre progresse de droite vers gauche
+                progressSteps.style.setProperty('--progress-width', percent + '%');
+                progressSteps.style.setProperty('--progress-right', (100 - percent) + '%');
+                progressSteps.style.setProperty('--progress-left', 'auto');
+                progressSteps.style.setProperty('--progress-right-value', (100 - percent) + '%');
+                progressSteps.style.setProperty('background-position', 'right');
+            }
+            
+            // Appliquer la largeur de la barre via style
+            const styleId = 'progressBarStyle';
+            let styleEl = document.getElementById(styleId);
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = styleId;
+                document.head.appendChild(styleEl);
+            }
+            
+            if (isRTL) {
+                styleEl.textContent = `.progress-steps::after { width: ${percent}%; right: 0; left: auto; }`;
+            } else {
+                styleEl.textContent = `.progress-steps::after { width: ${percent}%; left: 0; right: auto; }`;
+            }
+            
+            for (let i = 1; i <= 4; i++) {
+                const stepEl = document.getElementById('progressStep' + i);
+                stepEl.classList.remove('active', 'completed');
+                if (i < step) stepEl.classList.add('completed');
+                else if (i === step) stepEl.classList.add('active');
+            }
+        }
         
-        // ═══════════════════════════════════════════════════════════════
-        // MENU DE LANGUE - Fonctions Escamotables
-        // ═══════════════════════════════════════════════════════════════
+        // Mise à jour des textes des cercles
+        function updateStepLabels(lang) {
+            const t = translationsJS[lang];
+            if (t) {
+                document.getElementById('stepLabel1').innerText = t.step1;
+                document.getElementById('stepLabel2').innerText = t.step2;
+                document.getElementById('stepLabel3').innerText = t.step3;
+                document.getElementById('stepLabel4').innerText = t.step4;
+            }
+        }
         
+        function changeLanguage(lang) {
+            if (lang === currentLanguage) return;
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=set_language&language=' + encodeURIComponent(lang)
+            }).then(r => r.json()).then(d => { if (d.success) location.reload(); }).catch(console.error);
+        }
+        
+        // Menu langue
         function toggleLanguageMenu() {
             const menu = document.getElementById('languageDropdownMenu');
             const backdrop = document.getElementById('languageMenuBackdrop');
-            
-            const isOpen = menu.classList.contains('active');
-            
-            if (isOpen) {
-                closeLanguageMenu();
+            if (menu.classList.contains('active')) {
+                menu.classList.remove('active');
+                backdrop.classList.remove('active');
             } else {
                 menu.classList.add('active');
                 backdrop.classList.add('active');
@@ -1674,292 +675,159 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         function closeLanguageMenu() {
-            const menu = document.getElementById('languageDropdownMenu');
-            const backdrop = document.getElementById('languageMenuBackdrop');
-            
-            menu.classList.remove('active');
-            backdrop.classList.remove('active');
+            document.getElementById('languageDropdownMenu').classList.remove('active');
+            document.getElementById('languageMenuBackdrop').classList.remove('active');
         }
         
-        function selectLanguageFromMenu(lang) {
-            const langCodes = ['ar', 'fr', 'en', 'it'];
-            if (!langCodes.includes(lang)) return;
-            
-            const menuItems = document.querySelectorAll('.language-menu-item');
-            menuItems.forEach(item => item.classList.remove('active'));
-            event.target.closest('.language-menu-item').classList.add('active');
-            
-            const toggleButtons = document.querySelectorAll('.lang-toggle-btn');
-            toggleButtons.forEach(btn => btn.classList.remove('active'));
-            const langMap = { 'ar': 0, 'fr': 1, 'en': 2, 'it': 3 };
-            if (langMap[lang] !== undefined) {
-                toggleButtons[langMap[lang]].classList.add('active');
-            }
-            
-            currentLanguage = lang;
-            closeLanguageMenu();
-            changeLanguage(lang);
-        }
-        
-        function changeLanguage(lang) {
-            const langCodes = ['ar', 'fr', 'en', 'it'];
-            if (!langCodes.includes(lang)) return;
-            
-            fetch(window.location.href, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=set_language&language=' + lang
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) location.reload();
-            })
-            .catch(error => console.error('Erreur:', error));
-        }
-        
-        document.addEventListener('click', function(event) {
-            const selector = document.getElementById('languageSelector');
-            const menu = document.getElementById('languageDropdownMenu');
-            
-            if (selector && menu.classList.contains('active')) {
-                if (!selector.contains(event.target)) {
-                    closeLanguageMenu();
-                }
-            }
-        });
-        
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
+        // Événements langue
+        document.querySelectorAll('.lang-toggle-btn, .language-menu-item').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const lang = this.getAttribute('data-lang');
+                if (lang) changeLanguage(lang);
                 closeLanguageMenu();
-            }
+            });
         });
+        document.getElementById('floatLangBtn')?.addEventListener('click', toggleLanguageMenu);
+        document.getElementById('languageMenuBackdrop')?.addEventListener('click', closeLanguageMenu);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLanguageMenu(); });
         
-        // ═══════════════════════════════════════════════════════════════
-        // AUTRES FONCTIONS
-        // ═══════════════════════════════════════════════════════════════
-        
+        // QR Code
         function generateQRCode() {
-            const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = '';
-            const mobileUrl = window.location.href.split('?')[0];
-            new QRCode(qrContainer, {
-                text: mobileUrl,
-                width: 200,
-                height: 200,
-                colorDark: '#5a67d8',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.H
+            const el = document.getElementById('qrcode');
+            if (el) {
+                el.innerHTML = '';
+                new QRCode(el, { text: window.location.href.split('?')[0], width: 180, height: 180, colorDark: '#5a67d8', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+            }
+        }
+        
+        function goToStep(n) {
+            const t = translationsJS[currentLanguage] || translationsJS.fr;
+            if (n === 3 && !selectedService) {
+                alert(t.select_service_first);
+                return;
+            }
+            document.getElementById('step' + currentStep).classList.remove('active');
+            document.getElementById('step' + n).classList.add('active');
+            currentStep = n;
+            updateProgress(n);
+        }
+        
+        // Sélection service
+        function initServiceButtons() {
+            document.querySelectorAll('.service-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedService = this.getAttribute('data-name');
+                    selectedServiceCode = this.getAttribute('data-code');
+                    fetch(window.location.href, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'action=set_service&service=' + encodeURIComponent(selectedService) + '&service_code=' + encodeURIComponent(selectedServiceCode)
+                    }).catch(console.error);
+                });
             });
         }
         
-        function updateProgress(stepNumber) {
-            const totalSteps = 4;
-            const percentage = (stepNumber / totalSteps) * 100;
-            
-            document.getElementById('progressFill').style.width = percentage + '%';
-            
-            for (let i = 1; i <= totalSteps; i++) {
-                const progressStep = document.getElementById('progressStep' + i);
-                if (i < stepNumber) {
-                    progressStep.classList.add('completed');
-                    progressStep.classList.remove('active');
-                } else if (i === stepNumber) {
-                    progressStep.classList.add('active');
-                    progressStep.classList.remove('completed');
-                } else {
-                    progressStep.classList.remove('active', 'completed');
-                }
-            }
-        }
-        
-        function selectLanguage(lang) {
-            const buttons = document.querySelectorAll('.lang-toggle-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.closest('.lang-toggle-btn').classList.add('active');
-            
-            const menuItems = document.querySelectorAll('.language-menu-item');
-            menuItems.forEach(item => item.classList.remove('active'));
-            const langMap = { 'ar': 0, 'fr': 1, 'en': 2, 'it': 3 };
-            if (langMap[lang] !== undefined) {
-                menuItems[langMap[lang]].classList.add('active');
-            }
-            
-            currentLanguage = lang;
-            changeLanguage(lang);
-        }
-        
-        function selectService(service, serviceCode, element) {
-            const buttons = document.querySelectorAll('.service-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            element.classList.add('active');
-            
-            selectedService = service;
-            selectedServiceCode = serviceCode;
-            
-            console.log('✅ Service sélectionné:', service, 'Code:', serviceCode);
-            
-            fetch(window.location.href, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=set_service&service=' + encodeURIComponent(service) + '&service_code=' + encodeURIComponent(serviceCode)
-            })
-            .catch(error => console.error('Erreur:', error));
-        }
-        
-        function goToStep(stepNumber) {
-            document.getElementById('step' + currentStep).classList.remove('active');
-            document.getElementById('step' + stepNumber).classList.add('active');
-            currentStep = stepNumber;
-            updateProgress(stepNumber);
-        }
-        
+        // Soumission formulaire
         function submitForm() {
             const name = document.getElementById('fullName').value.trim();
             const phone = document.getElementById('phone').value.trim();
-            const status = document.getElementById('status').value.trim();
-            const errorMessage = document.getElementById('errorMessage');
+            const status = document.getElementById('status').value;
+            const errEl = document.getElementById('errorMessage');
+            const t = translationsJS[currentLanguage] || translationsJS.fr;
             
             if (!name || !phone || !status || !selectedService) {
-                errorMessage.textContent = '⚠️ Veuillez remplir tous les champs obligatoires';
-                errorMessage.style.display = 'block';
-                errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                errEl.textContent = t.error_empty;
+                errEl.style.display = 'block';
+                errEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 return;
             }
+            errEl.style.display = 'none';
             
-            errorMessage.style.display = 'none';
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            btn.innerHTML = '⏳ ' + t.processing;
             
-            const formData = new FormData();
-            formData.append('action', 'save_ticket');
-            formData.append('name', name);
-            formData.append('phone', phone);
-            formData.append('status', status);
-            formData.append('service', selectedService);
-            formData.append('service_code', selectedServiceCode);
+            const fd = new FormData();
+            fd.append('action', 'save_ticket');
+            fd.append('name', name);
+            fd.append('phone', phone);
+            fd.append('status', status);
+            fd.append('service', selectedService);
+            fd.append('service_code', selectedServiceCode);
             
-            const submitBtn = event.target;
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.6';
-            
-            fetch(window.location.href, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('✅ Ticket créé:', data);
-                if (data.success) {
-                    displayTicket(data);
-                    goToStep(4);
-                } else {
-                    errorMessage.textContent = data.message || '❌ Erreur lors de la création du ticket';
-                    errorMessage.style.display = 'block';
-                    submitBtn.disabled = false;
-                    submitBtn.style.opacity = '1';
-                }
-            })
-            .catch(error => {
-                console.error('❌ Erreur:', error);
-                errorMessage.textContent = '⚠️ Une erreur est survenue. Veuillez réessayer.';
-                errorMessage.style.display = 'block';
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-            });
-        }
-        
-        function displayTicket(data) {
-            // ✅ PERSISTANCE DU NUMÉRO - Animation fluide
-            const ticketNumber = document.getElementById('ticketNumber');
-            
-            // Arrêter l'animation actuelle et réinitialiser
-            ticketNumber.style.animation = 'none';
-            ticketNumber.offsetHeight; // Forcer le recalcul du style
-            
-            // Afficher le nouveau numéro avec animation
-            ticketNumber.textContent = data.ticket_number;
-            ticketNumber.style.animation = 'slideInRight 0.6s ease-out';
-            
-            // Afficher les autres infos
-            document.getElementById('ticketName').textContent = data.name;
-            document.getElementById('ticketPhone').textContent = data.phone;
-            document.getElementById('ticketStatus').textContent = data.status;
-            document.getElementById('ticketService').textContent = data.service;
-            
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR');
-            document.getElementById('ticketDate').textContent = dateStr;
+            fetch(window.location.href, { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('ticketNumber').innerText = data.ticket_number;
+                        document.getElementById('ticketName').innerText = data.name;
+                        document.getElementById('ticketPhone').innerText = data.phone;
+                        let statusText = data.status === 'standard' ? t.standard : (data.status === 'pregnant' ? t.pregnant : (data.status === 'disability' ? t.disability : data.status));
+                        document.getElementById('ticketStatus').innerText = statusText;
+                        document.getElementById('ticketService').innerText = data.service;
+                        document.getElementById('ticketDate').innerText = new Date().toLocaleDateString() + ' à ' + new Date().toLocaleTimeString();
+                        goToStep(4);
+                    } else {
+                        errEl.textContent = data.message || 'Erreur';
+                        errEl.style.display = 'block';
+                    }
+                })
+                .catch(err => {
+                    errEl.textContent = 'Erreur serveur';
+                    errEl.style.display = 'block';
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.innerHTML = '📋 ' + t.print_ticket;
+                });
         }
         
         function printTicket() {
-            const printBtn = event.target;
-            const originalText = printBtn.textContent;
-            
-            // Préparer l'impression
-            printBtn.textContent = '⏳ Impression...';
-            printBtn.disabled = true;
-            
-            // Petit délai avant impression pour s'assurer que le DOM est prêt
+            const btn = document.getElementById('printBtn');
+            const t = translationsJS[currentLanguage] || translationsJS.fr;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '⏳ ' + t.printing;
+            btn.disabled = true;
             setTimeout(() => {
                 window.print();
-                
-                // Restaurer le bouton après impression
                 setTimeout(() => {
-                    printBtn.textContent = originalText;
-                    printBtn.disabled = false;
+                    btn.innerHTML = orig;
+                    btn.disabled = false;
                 }, 1500);
             }, 100);
         }
         
         function resetForm() {
-            // Réinitialiser le formulaire avec animation fluide
-            const card = document.querySelector('.card');
-            card.style.animation = 'slideIn 0.5s ease-out';
-            
-            // Réinitialiser les champs
             document.getElementById('fullName').value = '';
             document.getElementById('phone').value = '';
             document.getElementById('status').value = '';
             document.getElementById('errorMessage').style.display = 'none';
-            document.getElementById('ticketNumber').textContent = '----';
-            
-            // Réinitialiser la sélection du service
-            document.querySelectorAll('.service-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('ticketNumber').innerHTML = '----';
+            document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('active'));
             selectedService = '';
             selectedServiceCode = '';
-            
-            // Retour à l'étape 1
             goToStep(1);
             generateQRCode();
         }
         
-        // Initialiser au chargement de la page
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            initServiceButtons();
             generateQRCode();
             updateProgress(1);
-            
-            // Initialiser le menu avec la bonne langue active
-            const langMap = { 'ar': 0, 'fr': 1, 'en': 2, 'it': 3 };
-            const langIndex = langMap[currentLanguage];
-            if (langIndex !== undefined) {
-                const menuItems = document.querySelectorAll('.language-menu-item');
-                menuItems.forEach((item, index) => {
-                    if (index === langIndex) {
-                        item.classList.add('active');
-                    } else {
-                        item.classList.remove('active');
-                    }
-                });
-            }
-            
-            // Navigation au clavier
-            document.addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    const activeStep = document.querySelector('.step.active');
-                    if (activeStep.id === 'step3') {
-                        const submitBtn = activeStep.querySelector('.btn-primary');
-                        submitBtn && submitBtn.click();
-                    }
-                }
-            });
+            document.getElementById('nextStep1Btn')?.addEventListener('click', () => goToStep(2));
+            document.getElementById('backStep2Btn')?.addEventListener('click', () => goToStep(1));
+            document.getElementById('nextStep2Btn')?.addEventListener('click', () => goToStep(3));
+            document.getElementById('backStep3Btn')?.addEventListener('click', () => goToStep(2));
+            document.getElementById('submitBtn')?.addEventListener('click', submitForm);
+            document.getElementById('printBtn')?.addEventListener('click', printTicket);
+            document.getElementById('resetBtn')?.addEventListener('click', resetForm);
+            document.addEventListener('keypress', e => { if (e.key === 'Enter' && currentStep === 3) submitForm(); });
         });
     </script>
 </body>

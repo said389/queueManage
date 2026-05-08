@@ -64,10 +64,12 @@ class Autoloader {
         "AdminTopicalDomainEdit" => "pages/AdminTopicalDomainEdit.php",
         "AdminTopicalDomainList" => "pages/AdminTopicalDomainList.php",
         "ApiPage" => "pages/ApiPage.php",
+        "ClientSpace" => "pages/ClientSpace.php",
         "LoginPage" => "pages/LoginPage.php",
         "LogoutPage" => "pages/LogoutPage.php",
         "OperatorPage" => "pages/OperatorPage.php",
         "Page" => "pages/Page.php",
+        "SalleAttentePage" => "pages/salle_attente.php",
         # Pages / devices
         "DeviceMainPage" => "pages/device/DeviceMainPage.php",
         "DeviceDisplayDesk" => "pages/device/DeviceDisplayDesk.php",
@@ -77,15 +79,15 @@ class Autoloader {
         # Pages / globalServer
         "GsHomePage" => "pages/globalServer/GsHomePage.php",
         "GsSearch" => "pages/globalServer/GsSearch.php",
+        # Pages / totem
+        "GetOfficeInfo" => "totem/GetOfficeInfo.php",
+        "GetTopicalDomains" => "totem/GetTopicalDomains.php",
+        "ReserveTicket" => "totem/ReserveTicket.php",
         # Pages / web
         "WebCheckPhone" => "pages/web/WebCheckPhone.php",
         "WebComplete" => "pages/web/WebComplete.php",
         "WebInsertPhone" => "pages/web/WebInsertPhone.php",
         "WebTdSelection" => "pages/web/WebTdSelection.php",
-        # Totem
-        "GetOfficeInfo" => "totem/GetOfficeInfo.php",
-        "GetTopicalDomains" => "totem/GetTopicalDomains.php",
-        "ReserveTicket" => "totem/ReserveTicket.php",
     );
     
     public static function autoload( $class ) {
@@ -94,3 +96,5 @@ class Autoloader {
         }
     }
 }
+
+?>

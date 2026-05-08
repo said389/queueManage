@@ -1,22 +1,14 @@
-# Editors
-*.kate-swp
-*~
-\#*#
-.#*
-.*.swp
-.project
-cscope.files
-cscope.out
-
-## IDE
-nbproject*
-project.index
-.idea
-
-# Operating systems
-## Mac OS X
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.melos_tool/
+.idea/
+android/.gradle/
+android/captures/
+android/gradle/
+android/local.properties
 .DS_Store
-## Windows
-Thumbs.db
-
-LocalSettings.php
+*.iml

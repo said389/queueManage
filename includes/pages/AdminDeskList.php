@@ -1,13 +1,98 @@
 <?php
 
 class AdminDeskList extends Page {
+    private $message = "";
+    private $desk_id = 0;
+    private $desk_number = 0;
+    private $desk_ip_address = "";
+    private $pairing = 0;
 
     public function canUse($userLevel) {
         return $userLevel === Page::SYSADMIN_USER;
     }
 
+    public function afterPermissionCheck() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->desk_id = gfPostVar('desk_id', 0);
+            $this->desk_number = gfPostVar('desk_number', 0);
+            $this->desk_ip_address = gfPostVar('desk_ip_address', '');
+            $this->pairing = gfPostVar('pairing', 0);
+        }
+    }
+
     public function execute() {
+        // Traiter la soumission du formulaire si POST
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->handleDeskSubmit();
+        }
         return true;
+    }
+
+    private function handleDeskSubmit() {
+        $desk_number = trim($this->desk_number);
+        $desk_ip_address = trim($this->desk_ip_address);
+        
+        if ($desk_number === '' || $desk_ip_address === '') {
+            $this->message = "Tous les champs sont obligatoires.";
+            return;
+        }
+        
+        if (preg_match('/^[1-9][0-9]*$/', $desk_number) !== 1) {
+            $this->message = "Le numéro du compteur n'est pas valide (1-99).";
+            return;
+        }
+        
+        if (!filter_var($desk_ip_address, FILTER_VALIDATE_IP)) {
+            $this->message = "L'adresse IP n'est pas valide.";
+            return;
+        }
+        
+        // Vérifier l'unicité du numéro
+        $desk = Desk::fromDatabaseByNumber($desk_number);
+        if ($desk && ($this->desk_id === 0 || $this->desk_id !== (int) $desk->getId())) {
+            $this->message = "Le numéro du compteur n'est pas disponible.";
+            return;
+        }
+        unset($desk);
+        
+        // Vérifier l'unicité de l'IP
+        $desk = Desk::fromDatabaseByIpAddress($desk_ip_address);
+        $device = Device::fromDatabaseByIpAddress($desk_ip_address);
+        if ($device || ($desk && ($this->desk_id === 0 || $this->desk_id !== (int) $desk->getId()))) {
+            $this->message = "L'adresse IP est déjà assignée.";
+            return;
+        }
+        unset($desk);
+        
+        // Créer ou récupérer le compteur
+        if ($this->desk_id === 0) {
+            $desk = Desk::newRecord();
+        } else {
+            $desk = Desk::fromDatabaseById($this->desk_id);
+            if (!$desk) {
+                $this->message = "Le compteur n'existe pas.";
+                return;
+            }
+        }
+
+        if ($desk->isOpen()) {
+            $this->message = "Le compteur est ouvert. Fermer la session avant de continuer.";
+            return;
+        }
+
+        $desk->setNumber($desk_number);
+        $desk->setIpAddress($desk_ip_address);
+        
+        if ($desk->save()) {
+            gfSetDelayedMsg('Opération effectuée correctement', 'Ok');
+            // Réinitialiser après succès
+            $this->desk_id = 0;
+            $this->desk_number = 0;
+            $this->desk_ip_address = "";
+            $this->message = "";
+        } else {
+            $this->message = "Impossible de sauvegarder les modifications. Réessayez plus tard.";
+        }
     }
 
     public function getOutput() {
@@ -143,9 +228,12 @@ class AdminDeskList extends Page {
 
         <div id="modalMessage" class="modal-message" style="display:none;"></div>
 
-        <form id="deskForm" method="post" action="$gvPath/application/adminDeskEdit">
-            <input type="hidden" name="desk_id"  id="modal_desk_id"  value="0" />
-            <input type="hidden" name="pairing"   id="modal_pairing"  value="0" />
+        <form id="deskForm" method="post" action="">
+            <input type="hidden" name="desk_id"  id="modal_desk_id"  value="{$this->desk_id}" />
+            <input type="hidden" name="desk_number" id="modal_desk_number_hidden" value="{$this->desk_number}" />
+            <input type="hidden" name="desk_ip_address" id="modal_desk_ip_address_hidden" value="{$this->desk_ip_address}" />
+            <input type="hidden" name="pairing"   id="modal_pairing"  value="{$this->pairing}" />
+            <input type="hidden" name="server_message" id="server_message" value="{$this->message}" />
 
             <div class="modal-body">
                 <div class="form-group">
@@ -153,14 +241,22 @@ class AdminDeskList extends Page {
                         <i class="fas fa-hashtag"></i> Numéro du compteur
                     </label>
                     <input type="number" name="desk_number" id="modal_desk_number"
-                           placeholder="ex: 1, 2, 3..." min="1" max="99" autocomplete="off" />
+                           placeholder="ex: 1, 2, 3..." min="1" max="99" autocomplete="off" required />
+                    <div class="info-banner" style="margin-top: 8px; margin-bottom: 0; padding: 8px 12px; display: none;" id="numberInfo">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Numéro unique entre <strong>1 et 99</strong></span>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="modal_desk_ip_address">
                         <i class="fas fa-wifi"></i> Adresse IP
                     </label>
                     <input type="text" name="desk_ip_address" id="modal_desk_ip_address"
-                           placeholder="ex: 192.168.1.100" autocomplete="off" />
+                           placeholder="ex: 192.168.1.100" autocomplete="off" required />
+                    <div class="info-banner" style="margin-top: 8px; margin-bottom: 0; padding: 8px 12px; display: none;" id="ipInfo">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Adresse IP <span class="ip-hint">IPv4</span> statique du compteur</span>
+                    </div>
                 </div>
             </div>
 
@@ -336,14 +432,44 @@ function closeModalOnBackdrop(e) {
 
 function showMessage(text, type) {
     const el = document.getElementById('modalMessage');
-    el.textContent   = text;
-    el.className     = 'modal-message ' + type;
-    el.style.display = 'block';
+    el.innerHTML = '<i class="' + (type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle') + '" style="flex-shrink: 0;"></i> ' + text;
+    el.className = 'modal-message ' + type;
+    el.style.display = 'flex';
 }
 
 function hideMessage() {
     document.getElementById('modalMessage').style.display = 'none';
 }
+
+/* ==============================
+   GESTION FORMULAIRE MODAL
+   ============================== */
+document.getElementById('deskForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const deskNumber = document.getElementById('modal_desk_number').value.trim();
+    const deskIp = document.getElementById('modal_desk_ip_address').value.trim();
+    
+    // Validation
+    if (!deskNumber || !deskIp) {
+        showMessage('Tous les champs sont obligatoires.', 'error');
+        return;
+    }
+    
+    if (!/^[1-9][0-9]*$/.test(deskNumber)) {
+        showMessage('Le numéro du compteur n\'est pas valide (1-99).', 'error');
+        return;
+    }
+    
+    const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    if (!ipRegex.test(deskIp)) {
+        showMessage('L\'adresse IP n\'est pas valide.', 'error');
+        return;
+    }
+    
+    // Soumettre le formulaire
+    this.submit();
+});
 
 /* ==============================
    MODAL SUPPRESSION (AJAX)
@@ -428,9 +554,60 @@ function showToast(msg, type) {
     toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 3500);
 }
 
+/* ---- Validation dynamique IP ---- */
+const ipInput = document.getElementById('modal_desk_ip_address');
+if (ipInput) {
+    ipInput.addEventListener('input', function() {
+        const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        
+        if (this.value && !ipRegex.test(this.value)) {
+            this.style.borderColor = '#e74c3c';
+            this.style.backgroundColor = '#fff0f0';
+        } else {
+            this.style.borderColor = '#eee';
+            this.style.backgroundColor = 'white';
+        }
+    });
+}
+
+/* ---- Validation numéro ---- */
+const numberInput = document.getElementById('modal_desk_number');
+if (numberInput) {
+    numberInput.addEventListener('input', function() {
+        if (this.value < 1) this.value = 1;
+        if (this.value > 99) this.value = 99;
+    });
+}
+
+/* ---- Afficher message d'erreur si présent au chargement ---- */
+window.addEventListener('load', function() {
+    const serverMessage = document.getElementById('server_message').value;
+    const deskId = parseInt(document.getElementById('modal_desk_id').value) || 0;
+    const deskNumber = document.getElementById('modal_desk_number_hidden').value || '';
+    const deskIp = document.getElementById('modal_desk_ip_address_hidden').value || '';
+    
+    if (serverMessage && serverMessage.trim()) {
+        // Il y a une erreur, remplir les champs et ouvrir la modal
+        document.getElementById('modal_desk_number').value = deskNumber;
+        document.getElementById('modal_desk_ip_address').value = deskIp;
+        
+        const isEdit = deskId > 0;
+        document.getElementById('modalTitle').textContent = isEdit ? 'Modifier le compteur' : 'Ajouter un compteur';
+        document.getElementById('modalSubtitle').textContent = isEdit ? 'Modifiez les informations ci-dessous' : 'Remplissez les informations du compteur';
+        document.getElementById('submitLabel').textContent = isEdit ? 'Modifier' : 'Enregistrer';
+        
+        showMessage(serverMessage, 'error');
+        document.getElementById('modalBackdrop').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+});
+
 /* ---- Escape key ---- */
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeModal(); closeDeleteModal(); }
+    if (e.key === 'Escape') { 
+        closeModal(); 
+        closeDeleteModal(); 
+    }
 });
 </script>
 HTML;
@@ -801,7 +978,7 @@ HTML;
 
     .modal-message {
         margin: 16px 28px 0; padding: 12px 16px; border-radius: 10px;
-        font-size: 13px; font-weight: 500;
+        font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 10px;
     }
     .modal-message.error   { background: #fff0f0; color: #c0392b; border-left: 3px solid #e74c3c; }
     .modal-message.success { background: #f0fff4; color: #1e7e34; border-left: 3px solid #28a745; }
@@ -826,6 +1003,39 @@ HTML;
         border-color: #6C63FF; box-shadow: 0 0 0 3px rgba(108,99,255,0.12);
     }
     .form-group input::placeholder { color: #aaa; }
+    .form-group input[type="number"] {
+        -moz-appearance: textfield;
+    }
+    .form-group input[type="number"]::-webkit-inner-spin-button,
+    .form-group input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .info-banner {
+        background: #f8f9fc;
+        border-left: 3px solid #6C63FF;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #555;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .info-banner i {
+        color: #6C63FF;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+    .ip-hint {
+        font-family: 'Monaco', 'Menlo', monospace;
+        background: #eee;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        color: #6C63FF;
+    }
 
     .delete-confirm-text {
         font-size: 14px; color: #444; line-height: 1.6;

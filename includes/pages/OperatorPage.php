@@ -185,7 +185,8 @@ class OperatorPage extends Page {
     private function ajaxPauseTimer() {
         if (isset($_SESSION['timer_start']) && !$_SESSION['timer_paused']) {
             $elapsed = time() - $_SESSION['timer_start'];
-            $_SESSION['timer_remaining'] = max(0, 10 - $elapsed);
+            $_SESSION['timer_remaining'] = max(0, 60 - $elapsed);
+
             $_SESSION['timer_paused'] = true;
             $this->jsonResponse(true, 'Chronomètre en pause', 200, array('remaining' => $_SESSION['timer_remaining']));
         } else {
@@ -309,7 +310,10 @@ class OperatorPage extends Page {
             $_SESSION['selected_ticket_id'] = $ticketId;
             $_SESSION['timer_start'] = time();
             $_SESSION['timer_paused'] = false;
-            $_SESSION['timer_remaining'] = 10;
+            $_SESSION['timer_remaining'] = 60;
+            
+            // 🆕 SYNCHRONIZE WITH WAITING ROOM DISPLAY
+            $this->syncTicketToWaitingRoom( $ticket );
             
             $ticketHtml = $this->generateTicketDisplayHtml($ticket);
             $this->jsonResponse(true, 'Ticket sélectionné', 200, array('ticketHtml' => $ticketHtml));

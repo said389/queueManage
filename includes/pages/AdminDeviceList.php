@@ -1,13 +1,105 @@
 <?php
 
 class AdminDeviceList extends Page {
+    private $message = "";
+    private $dev_id = 0;
+    private $dev_ip_address = '';
+    private $dev_desk_number = "";
+    private $dev_td_code = null;
 
     public function canUse($userLevel) {
         return $userLevel === Page::SYSADMIN_USER;
     }
 
+    public function afterPermissionCheck() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->dev_id = gfPostVar('dev_id', 0);
+            $this->dev_ip_address = gfPostVar('dev_ip_address', '');
+            $this->dev_desk_number = gfPostVar('dev_desk_number', '0');
+            $this->dev_td_code = gfPostVar('dev_td_code', '0');
+        }
+
+        if ($this->dev_td_code == '0' || $this->dev_desk_number != 0) {
+            $this->dev_td_code = null;
+        }
+    }
+
     public function execute() {
+        // Traiter la soumission du formulaire si POST
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->handleDeviceSubmit();
+        }
         return true;
+    }
+
+    private function handleDeviceSubmit() {
+        $dev_ip_address = trim($this->dev_ip_address);
+        $dev_desk_number = trim($this->dev_desk_number);
+        
+        if ($dev_ip_address === '' || $dev_desk_number === '') {
+            $this->message = "Tous les champs sont obligatoires.";
+            return;
+        }
+        
+        if (preg_match('/^(0|[1-9][0-9]*)$/', $dev_desk_number) !== 1) {
+            $this->message = "Le numéro de guichet n'est pas valide.";
+            return;
+        }
+        
+        if (!filter_var($dev_ip_address, FILTER_VALIDATE_IP)) {
+            $this->message = "L'adresse IP n'est pas valide.";
+            return;
+        }
+        
+        if ((int) $dev_desk_number !== 0) {
+            $desk = Desk::fromDatabaseByNumber($dev_desk_number);
+            if (!$desk) {
+                $this->message = "Le guichet spécifié n'existe pas.";
+                return;
+            }
+            unset($desk);
+        }
+
+        if ($this->dev_td_code) {
+            $td = TopicalDomain::fromDatabaseByCode($this->dev_td_code);
+            if (!$td || !$td->getActive()) {
+                $this->message = "Le domaine thématique sélectionné n'est pas disponible.";
+                return;
+            }
+        }
+        
+        $device = Device::fromDatabaseByIpAddress($dev_ip_address);
+        $desk = Desk::fromDatabaseByIpAddress($dev_ip_address);
+        if ($desk || ($device && ($this->dev_id === 0 || $this->dev_id !== (int) $device->getId()))) {
+            $this->message = "Cette adresse IP est déjà attribuée.";
+            return;
+        }
+        unset($device);
+        
+        if ($this->dev_id === 0) {
+            $device = Device::newRecord();
+        } else {
+            $device = Device::fromDatabaseById($this->dev_id);
+            if (!$device) {
+                $this->message = "L'appareil n'existe pas.";
+                return;
+            }
+        }
+        $device->setIpAddress($dev_ip_address);
+        $device->setDeskNumber($dev_desk_number);
+        $device->setTdCode($this->dev_td_code);
+        
+        if ($device->save()) {
+            gfSetDelayedMsg('Opération effectuée avec succès', 'Succès');
+            // Réinitialiser après succès
+            $this->dev_id = 0;
+            $this->dev_ip_address = '';
+            $this->dev_desk_number = "0";
+            $this->dev_td_code = null;
+            $this->message = "";
+        } else {
+            $this->message = "Impossible d'enregistrer les modifications. Veuillez réessayer.";
+        }
     }
 
     public function getOutput() {
@@ -82,12 +174,17 @@ class AdminDeviceList extends Page {
             <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
         </div>
         <div id="modalMessage" class="modal-message" style="display:none;"></div>
-        <form id="deviceForm" method="post" action="$gvPath/application/adminDeviceEdit">
+        <form id="deviceForm" method="post" action="">
             <input type="hidden" name="dev_id" id="modal_dev_id" value="0" />
+            <input type="hidden" name="dev_ip_address_hidden" id="modal_dev_ip_address_hidden" value="" />
+            <input type="hidden" name="dev_desk_number_hidden" id="modal_dev_desk_number_hidden" value="0" />
+            <input type="hidden" name="dev_td_code_hidden" id="modal_dev_td_code_hidden" value="0" />
+            <input type="hidden" name="server_message" id="server_message" value="{$this->message}" />
+            
             <div class="modal-body">
                 <div class="form-group">
                     <label for="modal_dev_ip_address"><i class="fas fa-network-wired"></i> Adresse IP</label>
-                    <input type="text" name="dev_ip_address" id="modal_dev_ip_address" placeholder="ex: 192.168.1.10" autocomplete="off" />
+                    <input type="text" name="dev_ip_address" id="modal_dev_ip_address" placeholder="ex: 192.168.1.10" autocomplete="off" required />
                 </div>
                 <div class="form-group">
                     <label for="modal_dev_desk_number"><i class="fas fa-desktop"></i> Fonction</label>
@@ -228,14 +325,71 @@ function handleFunctionChange() {
 
 function showMessage(t, type) {
     const el = document.getElementById('modalMessage');
-    el.textContent = t;
+    el.innerHTML = '<i class="' + (type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle') + '" style="flex-shrink: 0;"></i> ' + t;
     el.className = 'modal-message ' + type;
-    el.style.display = 'block';
+    el.style.display = 'flex';
 }
 
 function hideMessage() {
     document.getElementById('modalMessage').style.display = 'none';
 }
+
+/* ==============================
+   GESTION FORMULAIRE MODAL
+   ============================== */
+document.getElementById('deviceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const devIp = document.getElementById('modal_dev_ip_address').value.trim();
+    const devDeskNumber = document.getElementById('modal_dev_desk_number').value;
+    const devTdCode = document.getElementById('modal_dev_td_code').value;
+    
+    // Validation
+    if (!devIp) {
+        showMessage('L\'adresse IP est obligatoire.', 'error');
+        return false;
+    }
+    
+    const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    if (!ipRegex.test(devIp)) {
+        showMessage('L\'adresse IP n\'est pas valide.', 'error');
+        return false;
+    }
+    
+    // Mise à jour des hidden inputs
+    document.getElementById('modal_dev_ip_address_hidden').value = devIp;
+    document.getElementById('modal_dev_desk_number_hidden').value = devDeskNumber;
+    document.getElementById('modal_dev_td_code_hidden').value = devTdCode;
+    
+    // Soumettre le formulaire
+    this.submit();
+});
+
+/* ---- Afficher message d'erreur si présent au chargement ---- */
+window.addEventListener('load', function() {
+    const serverMessage = document.getElementById('server_message').value;
+    const devId = parseInt(document.getElementById('modal_dev_id').value) || 0;
+    const devIp = document.getElementById('modal_dev_ip_address_hidden').value || '';
+    const devDeskNumber = document.getElementById('modal_dev_desk_number_hidden').value || '0';
+    const devTdCode = document.getElementById('modal_dev_td_code_hidden').value || '0';
+    
+    if (serverMessage && serverMessage.trim()) {
+        // Il y a une erreur, remplir les champs et ouvrir la modal
+        document.getElementById('modal_dev_ip_address').value = devIp;
+        document.getElementById('modal_dev_desk_number').value = devDeskNumber;
+        document.getElementById('modal_dev_td_code').value = devTdCode;
+        
+        const isEdit = devId > 0;
+        document.getElementById('modalTitle').textContent = isEdit ? "Modifier l'appareil" : 'Ajouter un appareil';
+        document.getElementById('modalSubtitle').textContent = isEdit ? 'Modifiez les informations ci-dessous' : "Remplissez les informations de l'appareil";
+        document.getElementById('submitLabel').textContent = isEdit ? 'Modifier' : 'Enregistrer';
+        
+        showMessage(serverMessage, 'error');
+        handleFunctionChange();
+        document.getElementById('modalBackdrop').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+});
 
 let pendingDeleteId = null, pendingDeleteRow = null;
 
@@ -545,7 +699,7 @@ HTML;
     .modal-close { background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 10px; color: rgba(255,255,255,0.7); font-size: 16px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .modal-close:hover { background: rgba(255,107,107,0.3); color: #ff6b6b; }
 
-    .modal-message { margin: 16px 28px 0; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; }
+    .modal-message { margin: 16px 28px 0; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
     .modal-message.error { background: #fff0f0; color: #c0392b; border-left: 3px solid #e74c3c; }
     .modal-message.success { background: #f0fff4; color: #1e7e34; border-left: 3px solid #28a745; }
 

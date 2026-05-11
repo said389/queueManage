@@ -1,13 +1,135 @@
 <?php
 
 class AdminOperatorList extends Page {
+    private $message = "";
+    private $op_id = 0;
+    private $op_code = "";
+    private $op_name = "";
+    private $op_surname = "";
 
     public function canUse($userLevel) {
         return $userLevel === Page::SYSADMIN_USER;
     }
 
+    public function afterPermissionCheck() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->op_id = gfPostVar('op_id', 0);
+            $this->op_code = gfPostVar('op_code', '');
+            $this->op_name = gfPostVar('op_name', '');
+            $this->op_surname = gfPostVar('op_surname', '');
+        }
+    }
+
     public function execute() {
+        // Traiter la soumission du formulaire si POST
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->handleOperatorSubmit();
+        }
         return true;
+    }
+
+    private function handleOperatorSubmit() {
+        global $gvMinPasswordLength;
+
+        $op_password = gfPostVar('op_password', '');
+        $op_password_repete = gfPostVar('op_password_repete', '');
+
+        // Trim
+        $op_code = trim($this->op_code);
+        $op_name = trim($this->op_name);
+        $op_surname = trim($this->op_surname);
+
+        // Required fields
+        if ($op_code === '' || $op_name === '' || $op_surname === '') {
+            $this->message = "Tous les champs sont obligatoires.";
+            return;
+        }
+
+        // Password required for new operator
+        if ($this->op_id === 0 && $op_password === '') {
+            $this->message = "Le mot de passe est obligatoire pour un nouvel opérateur.";
+            return;
+        }
+
+        // Password length
+        if ($op_password && strlen($op_password) < $gvMinPasswordLength) {
+            $this->message = "Le mot de passe doit contenir au moins $gvMinPasswordLength caractères.";
+            return;
+        }
+
+        // Password match
+        if ($op_password !== $op_password_repete) {
+            $this->message = "Les mots de passe ne correspondent pas.";
+            return;
+        }
+
+        // Valid code (letters & digits only)
+        if (preg_match('/^[0-9a-z]+$/i', $op_code) !== 1) {
+            $this->message = "Le code opérateur n'est pas valide.";
+            return;
+        }
+
+        // Valid name
+        if (preg_match('/^[a-z \'àâçéèêëîïôùûüÿœæ]+$/i', $op_name) !== 1) {
+            $this->message = "Le prénom contient des caractères non valides.";
+            return;
+        }
+
+        // Valid surname
+        if (preg_match('/^[a-z \'àâçéèêëîïôùûüÿœæ]+$/i', $op_surname) !== 1) {
+            $this->message = "Le nom contient des caractères non valides.";
+            return;
+        }
+
+        // Code uniqueness
+        $op = Operator::fromDatabaseByCode($op_code);
+        if ($op && ($this->op_id === 0 || $this->op_id !== (int) $op->getId())) {
+            $this->message = "Ce code opérateur est déjà utilisé.";
+            return;
+        }
+        unset($op);
+
+        // Check operator is offline before edit
+        if ($this->op_id !== 0) {
+            $operator = Operator::fromDatabaseById($this->op_id);
+            if (!$operator) {
+                $this->message = "L'enregistrement est introuvable.";
+                return;
+            }
+            if ($operator->isOnline()) {
+                $this->message = "L'opérateur est en ligne, impossible de le modifier.";
+                return;
+            }
+        }
+
+        // Save
+        if ($this->op_id === 0) {
+            $op = Operator::newRecord();
+            $op->setCode($op_code);
+            $op->setName($op_name);
+            $op->setSurname($op_surname);
+            $op->setPassword($op_password);
+        } else {
+            $op = Operator::fromDatabaseById($this->op_id);
+            $op->setCode($op_code);
+            $op->setName($op_name);
+            $op->setSurname($op_surname);
+            if ($op_password) {
+                $op->setPassword($op_password);
+            }
+        }
+
+        if ($op->save()) {
+            gfSetDelayedMsg('Opération effectuée avec succès', 'Ok');
+            // Réinitialiser après succès
+            $this->op_id = 0;
+            $this->op_code = "";
+            $this->op_name = "";
+            $this->op_surname = "";
+            $this->message = "";
+        } else {
+            $this->message = "Impossible d'enregistrer les modifications. Veuillez réessayer.";
+        }
     }
 
     public function getOutput() {
@@ -68,13 +190,18 @@ class AdminOperatorList extends Page {
     <div class="modal" id="operatorModal">
         <div class="modal-header"><div class="modal-title"><div class="modal-icon"><i class="fas fa-user-plus"></i></div><div><h2 id="modalTitle">Ajouter un opérateur</h2><p id="modalSubtitle">Remplissez les informations</p></div></div><button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button></div>
         <div id="modalMessage" class="modal-message" style="display:none;"></div>
-        <form id="operatorForm" method="post" action="$gvPath/application/adminOperatorEdit">
+        <form id="operatorForm" method="post" action="">
             <input type="hidden" name="op_id" id="modal_op_id" value="0" />
+            <input type="hidden" name="op_code_hidden" id="modal_op_code_hidden" value="" />
+            <input type="hidden" name="op_name_hidden" id="modal_op_name_hidden" value="" />
+            <input type="hidden" name="op_surname_hidden" id="modal_op_surname_hidden" value="" />
+            <input type="hidden" name="server_message" id="server_message" value="{$this->message}" />
+            
             <div class="modal-body">
-                <div class="form-group"><label for="modal_op_code"><i class="fas fa-id-badge"></i> Code opérateur</label><input type="text" name="op_code" id="modal_op_code" placeholder="ex: OP001" autocomplete="off" /></div>
+                <div class="form-group"><label for="modal_op_code"><i class="fas fa-id-badge"></i> Code opérateur</label><input type="text" name="op_code" id="modal_op_code" placeholder="ex: OP001" autocomplete="off" required /></div>
                 <div class="form-row">
-                    <div class="form-group"><label for="modal_op_name"><i class="fas fa-user"></i> Prénom</label><input type="text" name="op_name" id="modal_op_name" placeholder="Prénom" autocomplete="off" /></div>
-                    <div class="form-group"><label for="modal_op_surname"><i class="fas fa-user"></i> Nom</label><input type="text" name="op_surname" id="modal_op_surname" placeholder="Nom" autocomplete="off" /></div>
+                    <div class="form-group"><label for="modal_op_name"><i class="fas fa-user"></i> Prénom</label><input type="text" name="op_name" id="modal_op_name" placeholder="Prénom" autocomplete="off" required /></div>
+                    <div class="form-group"><label for="modal_op_surname"><i class="fas fa-user"></i> Nom</label><input type="text" name="op_surname" id="modal_op_surname" placeholder="Nom" autocomplete="off" required /></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label for="modal_op_password"><i class="fas fa-lock"></i> Mot de passe</label><div class="input-password"><input type="password" name="op_password" id="modal_op_password" placeholder="••••••••" autocomplete="new-password" /><button type="button" class="toggle-pw" onclick="togglePw('modal_op_password',this)"><i class="fas fa-eye"></i></button></div><span class="field-hint" id="pwHint"></span></div>
@@ -104,7 +231,7 @@ let sidebarIsExpanded = true;
 function collapseSidebar() { sidebar.classList.add('collapsed'); mainContent.classList.add('expanded'); sidebarIsExpanded = false; updateToggleIcon(); localStorage.setItem('sidebarState', 'collapsed'); }
 function expandSidebar() { sidebar.classList.remove('collapsed'); mainContent.classList.remove('expanded'); sidebarIsExpanded = true; updateToggleIcon(); localStorage.setItem('sidebarState', 'expanded'); }
 function toggleSidebar() { sidebarIsExpanded ? collapseSidebar() : expandSidebar(); }
-function updateToggleIcon() { const icon = sidebarToggle.querySelector('i'); sidebarIsExpanded ? icon.classList.add('fa-chevron-left') : icon.classList.add('fa-chevron-right'); }
+function updateToggleIcon() { const icon = sidebarToggle.querySelector('i'); if (sidebarIsExpanded) { icon.classList.remove('fa-chevron-right'); icon.classList.add('fa-chevron-left'); } else { icon.classList.remove('fa-chevron-left'); icon.classList.add('fa-chevron-right'); } }
 
 sidebarToggle.addEventListener('click', function(e) { e.preventDefault(); toggleSidebar(); this.classList.add('animate'); setTimeout(() => this.classList.remove('animate'), 300); });
 function restoreSidebarState() { const savedState = localStorage.getItem('sidebarState'); savedState === 'collapsed' ? collapseSidebar() : expandSidebar(); }
@@ -121,6 +248,7 @@ function openModal(opId, opCode, opName, opSurname) {
     document.getElementById('modal_op_password').value = '';
     document.getElementById('modal_op_password_repete').value = '';
     document.getElementById('modalTitle').textContent = isEdit ? "Modifier" : 'Ajouter un opérateur';
+    document.getElementById('modalSubtitle').textContent = isEdit ? 'Modifiez les informations' : 'Remplissez les informations';
     document.getElementById('submitLabel').textContent = isEdit ? 'Modifier' : 'Enregistrer';
     document.getElementById('pwHint').textContent = isEdit ? 'Laissez vide pour ne pas changer' : '';
     hideMessage();
@@ -130,8 +258,92 @@ function openModal(opId, opCode, opName, opSurname) {
 function closeModal() { document.getElementById('modalBackdrop').classList.remove('show'); document.body.style.overflow = ''; }
 function closeModalOnBackdrop(e) { if (e.target === document.getElementById('modalBackdrop')) closeModal(); }
 function togglePw(id, btn) { const input = document.getElementById(id); input.type = input.type === 'password' ? 'text' : 'password'; btn.querySelector('i').className = input.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash'; }
-function showMessage(t, type) { const el = document.getElementById('modalMessage'); el.textContent = t; el.className = 'modal-message ' + type; el.style.display = 'block'; }
+function showMessage(t, type) { const el = document.getElementById('modalMessage'); el.innerHTML = '<i class="' + (type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle') + '" style="flex-shrink: 0;"></i> ' + t; el.className = 'modal-message ' + type; el.style.display = 'flex'; }
 function hideMessage() { document.getElementById('modalMessage').style.display = 'none'; }
+
+/* ==============================
+   GESTION FORMULAIRE MODAL
+   ============================== */
+document.getElementById('operatorForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const opCode = document.getElementById('modal_op_code').value.trim();
+    const opName = document.getElementById('modal_op_name').value.trim();
+    const opSurname = document.getElementById('modal_op_surname').value.trim();
+    const opPassword = document.getElementById('modal_op_password').value;
+    const opPasswordRepete = document.getElementById('modal_op_password_repete').value;
+    const opId = parseInt(document.getElementById('modal_op_id').value) || 0;
+    
+    // Validation
+    if (!opCode || !opName || !opSurname) {
+        showMessage('Tous les champs sont obligatoires.', 'error');
+        return false;
+    }
+    
+    if (opId === 0 && !opPassword) {
+        showMessage('Le mot de passe est obligatoire pour un nouvel opérateur.', 'error');
+        return false;
+    }
+    
+    if (opPassword && opPassword.length < 6) {
+        showMessage('Le mot de passe doit contenir au moins 6 caractères.', 'error');
+        return false;
+    }
+    
+    if (opPassword !== opPasswordRepete) {
+        showMessage('Les mots de passe ne correspondent pas.', 'error');
+        return false;
+    }
+    
+    if (!/^[0-9a-z]+$/i.test(opCode)) {
+        showMessage('Le code opérateur n\'est pas valide (alphanumérique uniquement).', 'error');
+        return false;
+    }
+    
+    if (!/^[a-z '\\àâçéèêëîïôùûüÿœæ]+$/i.test(opName)) {
+        showMessage('Le prénom contient des caractères non valides.', 'error');
+        return false;
+    }
+    
+    if (!/^[a-z '\\àâçéèêëîïôùûüÿœæ]+$/i.test(opSurname)) {
+        showMessage('Le nom contient des caractères non valides.', 'error');
+        return false;
+    }
+    
+    // Mise à jour des hidden inputs
+    document.getElementById('modal_op_code_hidden').value = opCode;
+    document.getElementById('modal_op_name_hidden').value = opName;
+    document.getElementById('modal_op_surname_hidden').value = opSurname;
+    
+    // Soumettre le formulaire
+    this.submit();
+});
+
+/* ---- Afficher message d'erreur si présent au chargement ---- */
+window.addEventListener('load', function() {
+    const serverMessage = document.getElementById('server_message').value;
+    const opId = parseInt(document.getElementById('modal_op_id').value) || 0;
+    const opCode = document.getElementById('modal_op_code_hidden').value || '';
+    const opName = document.getElementById('modal_op_name_hidden').value || '';
+    const opSurname = document.getElementById('modal_op_surname_hidden').value || '';
+    
+    if (serverMessage && serverMessage.trim()) {
+        // Il y a une erreur, remplir les champs et ouvrir la modal
+        document.getElementById('modal_op_code').value = opCode;
+        document.getElementById('modal_op_name').value = opName;
+        document.getElementById('modal_op_surname').value = opSurname;
+        
+        const isEdit = opId > 0;
+        document.getElementById('modalTitle').textContent = isEdit ? "Modifier" : 'Ajouter un opérateur';
+        document.getElementById('modalSubtitle').textContent = isEdit ? 'Modifiez les informations' : 'Remplissez les informations';
+        document.getElementById('submitLabel').textContent = isEdit ? 'Modifier' : 'Enregistrer';
+        document.getElementById('pwHint').textContent = isEdit ? 'Laissez vide pour ne pas changer' : '';
+        
+        showMessage(serverMessage, 'error');
+        document.getElementById('modalBackdrop').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+});
 
 let pendingDeleteId = null, pendingDeleteRow = null;
 function confirmDelete(opId, label, rowEl) { pendingDeleteId = opId; pendingDeleteRow = rowEl; document.getElementById('deleteTargetName').textContent = label; document.getElementById('deleteBackdrop').classList.add('show'); document.body.style.overflow = 'hidden'; }
@@ -287,7 +499,7 @@ HTML;
     .modal-close { background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 10px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .modal-close:hover { background: rgba(255,107,107,0.3); color: #ff6b6b; }
 
-    .modal-message { margin: 16px 28px 0; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; }
+    .modal-message { margin: 16px 28px 0; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
     .modal-message.error { background: #fff0f0; color: #c0392b; border-left: 3px solid #e74c3c; }
     .modal-message.success { background: #f0fff4; color: #1e7e34; border-left: 3px solid #28a745; }
 
